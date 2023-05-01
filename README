@@ -1,0 +1,56 @@
+
+    $ sudo dnf install lzo-devel python3-devel
+
+--
+
+    $ pip3 install python-lzo
+    $ pip3 install pillow
+
+--
+
+    $ ./tnt-scan.py -v ~/tnt.z64 > tnt.assets
+
+    $ ./tetrisphere-scan.py -v ~/tetrisphere.z64 > tetrisphere.assets
+
+--
+
+    # mode='RGBA'
+    $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A56BA
+    $ mv image.png nintendo_logo.png
+
+    # mode='L'
+    $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A87FA
+    $ mv image.png font_a.png
+
+    # mode='P'
+    $ ./tnt-extract.py -v ~/tnt.z64 -i 0x521998
+    $ mv image.png finale_boiler.png
+
+    # anim, 4 frames
+    $ ./tnt-extract.py -v ~/tnt.z64 --anim 0x527EDC
+    $ mv anim.webp celtic_lamp.webp
+
+    # by name
+    $ ./tnt-extract.py -v ~/tnt.z64 -n nintendo_logo
+    $ mv image.png nintendo_logo.png
+
+    # mode='RGBA'
+    $ ./tetrisphere-extract.py -v ~/tetrisphere.z64 -i 0x74271C
+    $ mv image.png title_screen.png
+
+--
+
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --image modified_finale_boiler.png -i 0x521998
+
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --seed 0xBAD05EED
+
+    # All blues
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --bag 5 6 9
+
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --sprint 90
+
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --ultra 1500
+
+    # by name
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --image modified_finale_boiler.png -n finale_boiler
+
