@@ -58,7 +58,7 @@ ultra:
 
     $ ./tnt-scan.py -v ~/tnt.z64 > tnt.assets
 
-    $ ./tetrisphere-scan.py -v ~/tetrisphere.z64 > tetrisphere.assets
+    $ ./sphere-scan.py -v ~/tetrisphere.z64 > tetrisphere.assets
 
 --
 
@@ -83,7 +83,7 @@ ultra:
     $ mv image.png nintendo_logo.png
 
     # mode='RGBA'
-    $ ./tetrisphere-extract.py -v ~/tetrisphere.z64 -i 0x74271C
+    $ ./sphere-extract.py -v ~/tetrisphere.z64 -i 0x74271C
     $ mv image.png title_screen.png
 
 --
