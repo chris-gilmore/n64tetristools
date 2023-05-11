@@ -21,7 +21,7 @@ image:
   -n NAME        name of image
 
 seed:
-  Hardcode RNG seed to a given 32-bit value, for example, 0xBAD05EED.
+  Hardcode RNG seed to a given 32-bit value, for example, 0x600D5EED.
 
   --seed VALUE   RNG seed
 
@@ -90,7 +90,7 @@ ultra:
 
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --image modified_finale_boiler.png -i 0x521998
 
-    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --seed 0xBAD05EED
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --seed 0x600D5EED
 
     # All blues
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --bag 5 6 9

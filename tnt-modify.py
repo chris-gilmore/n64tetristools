@@ -3,7 +3,7 @@
 """
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --image modified_finale_boiler.png -i 0x521998
 
-    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --seed 0xBAD05EED
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --seed 0x600D5EED
 
     # All blues
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --bag 5 6 9
@@ -35,7 +35,7 @@ def main():
     group_image_x.add_argument('-i', metavar='ADDR', type=auto_int, help='address of image')
     group_image_x.add_argument('-n', metavar='NAME', help='name of image')
 
-    group_seed = parser.add_argument_group('seed', 'Hardcode RNG seed to a given 32-bit value, for example, 0xBAD05EED.')
+    group_seed = parser.add_argument_group('seed', 'Hardcode RNG seed to a given 32-bit value, for example, 0x600D5EED.')
     group_seed.add_argument('--seed', metavar='VALUE', type=auto_int, help='RNG seed')
 
     group_bag = parser.add_argument_group('bag', 'A bag is defined by the following three numbers: {START} {END} {N}. Each bag generated will contain {N} copies each of the pieces from {START} up to, but not including, {END}.  Bag size {N*(END-START)} must not be greater than 63.  The order of pieces is: 0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O.  Example: "--bag 5 6 9" would produce only I pieces.')
