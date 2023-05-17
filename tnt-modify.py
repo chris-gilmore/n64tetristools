@@ -47,29 +47,42 @@ def main():
     group_ultra = parser.add_argument_group('ultra', 'Ultra goal lines.')
     group_ultra.add_argument('--ultra', metavar='LINES', type=auto_int, help='lines (default: 150)')
 
+    group_piece = parser.add_argument_group('piece', 'Modify piece properties.')
+    group_piece.add_argument('--piece', metavar='TYPE', type=int, help='0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O')
+    group_piece.add_argument('--dc', nargs=3, metavar='#', type=auto_int, help='diffuse color: R G B')
+    group_piece.add_argument('--sc', nargs=3, metavar='#', type=auto_int, help='specular color: R G B (default: 0xFF 0xFF 0xFF)')
+
     args = parser.parse_args()
 
     rom = TheNewTetrisRom(verbose=args.verbose)
     rom.from_file(args.SRC)
 
-    if args.image:
-        if args.i:
+    if args.image is not None:
+        if args.i is not None:
             rom.insert_image(args.image, args.i)
-        elif args.n:
+        elif args.n is not None:
             rom.insert_by_name(args.image, args.n)
 
-    if args.seed:
+    if args.seed is not None:
         rom.modify_seed(args.seed)
 
-    if args.bag:
+    if args.bag is not None:
         start, end, n = args.bag
         rom.modify_bag(start, end, n)
 
-    if args.sprint:
+    if args.sprint is not None:
         rom.modify_sprint(args.sprint)
 
-    if args.ultra:
+    if args.ultra is not None:
         rom.modify_ultra(args.ultra)
+
+    if args.piece is not None:
+        if args.dc is not None:
+            r, g, b = args.dc
+            rom.modify_piece_diffuse_color(args.piece, r, g, b)
+        if args.sc is not None:
+            r, g, b = args.sc
+            rom.modify_piece_specular_color(args.piece, r, g, b)
 
     rom.to_file(args.DEST)
 

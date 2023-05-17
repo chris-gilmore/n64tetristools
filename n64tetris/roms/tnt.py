@@ -342,3 +342,26 @@ class TheNewTetrisRom(BaseRom):
 
         self.data[addr1 : addr1 + 2] = lines[0:2]
         self.data[addr2 : addr2 + 2] = lines[0:2]
+
+    def modify_piece_color(self, base_address, piece, r, g, b):
+        if piece < 0 or piece > 6:
+            print("piece error: Piece type must be between 0 and 6", file=sys.stderr)
+            sys.exit(1)
+
+        addr1 = base_address + piece * 12
+
+        r &= 0xFF
+        g &= 0xFF
+        b &= 0xFF
+
+        self.data[addr1 + 1 : addr1 + 2] = bytes([r])
+        self.data[addr1 + 3 : addr1 + 4] = bytes([g])
+        self.data[addr1 + 5 : addr1 + 6] = bytes([b])
+
+    def modify_piece_diffuse_color(self, piece, r, g, b):
+        base_address = 0x096210
+        self.modify_piece_color(base_address, piece, r, g, b)
+
+    def modify_piece_specular_color(self, piece, r, g, b):
+        base_address = 0x096210 + 6
+        self.modify_piece_color(base_address, piece, r, g, b)

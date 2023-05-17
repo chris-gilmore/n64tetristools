@@ -2,7 +2,7 @@
 ```
 usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
                      [--seed VALUE] [--bag # # #] [--sprint TIME]
-                     [--ultra LINES]
+                     [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
                      SRC DEST
 
 positional arguments:
@@ -44,6 +44,12 @@ ultra:
 
   --ultra LINES  lines (default: 150)
 
+piece:
+  Modify piece properties.
+
+  --piece TYPE   0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
+  --dc # # #     diffuse color: R G B
+  --sc # # #     specular color: R G B (default: 0xFF 0xFF 0xFF)
 ```
 
 ```
