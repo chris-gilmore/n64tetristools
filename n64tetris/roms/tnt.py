@@ -367,16 +367,23 @@ class TheNewTetrisRom(BaseRom):
         self.modify_piece_color(base_address, piece, r, g, b)
 
     def modify_lock_delay(self, value):
-        addr1 = 0x002E0F3
-        addr2 = 0x002D2E7
+        addr1 = 0x02D2E7
+        addr2 = 0x02E0F3
 
         value &= 0xFF
 
         self.data[addr1 : addr1 + 1] = bytes([value])
         self.data[addr2 : addr2 + 1] = bytes([value])
 
+    def modify_line_delay(self, value):
+        addr1 = 0x02F59B
+
+        value &= 0xFF
+
+        self.data[addr1 : addr1 + 1] = bytes([value])
+
     def modify_square_delay(self, value):
-        addr1 = 0x0030973
+        addr1 = 0x030973
 
         value &= 0xFF
 

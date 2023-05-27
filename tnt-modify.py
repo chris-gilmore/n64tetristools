@@ -52,9 +52,10 @@ def main():
     group_piece.add_argument('--dc', nargs=3, metavar='#', type=auto_int, help='diffuse color: R G B')
     group_piece.add_argument('--sc', nargs=3, metavar='#', type=auto_int, help='specular color: R G B (default: 0xFF 0xFF 0xFF)')
 
-    group_delay = parser.add_argument_group('delay', 'Delay timers for piece locking and square forming.  One jiffy is a sixtieth of a second.')
-    group_delay.add_argument('--lock', metavar='JIFFIES', type=int, help='(default: 20)')
-    group_delay.add_argument('--square', metavar='JIFFIES', type=int, help='(default: 45)')
+    group_delay = parser.add_argument_group('delay', 'Delay timers for piece locking, square forming, and line clearing containing gold or silver.  One jiffy is a sixtieth of a second.')
+    group_delay.add_argument('--lock', metavar='JIFFIES', type=int, help='(default: 20, minimum: 0)')
+    group_delay.add_argument('--square', metavar='JIFFIES', type=int, help='(default: 45, minimum: 0)')
+    group_delay.add_argument('--line', metavar='JIFFIES', type=int, help='(default: 24, minimum: 1)')
 
     args = parser.parse_args()
 
@@ -93,6 +94,9 @@ def main():
 
     if args.square is not None:
         rom.modify_square_delay(args.square)
+
+    if args.line is not None:
+        rom.modify_line_delay(args.line)
 
     rom.to_file(args.DEST)
 

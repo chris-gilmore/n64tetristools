@@ -3,7 +3,7 @@
 usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
                      [--seed VALUE] [--bag # # #] [--sprint TIME]
                      [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
-                     [--lock JIFFIES] [--square JIFFIES]
+                     [--lock JIFFIES] [--square JIFFIES] [--line JIFFIES]
                      SRC DEST
 
 positional arguments:
@@ -53,11 +53,12 @@ piece:
   --sc # # #     specular color: R G B (default: 0xFF 0xFF 0xFF)
 
 delay:
-  Delay timers for piece locking and square forming. One jiffy is a sixtieth
-  of a second.
+  Delay timers for piece locking, square forming, and line clearing
+  containing gold or silver. One jiffy is a sixtieth of a second.
 
-  --lock JIFFIES    (default: 20)
-  --square JIFFIES  (default: 45)
+  --lock JIFFIES    (default: 20, minimum: 0)
+  --square JIFFIES  (default: 45, minimum: 0)
+  --line JIFFIES    (default: 24, minimum: 1)
 ```
 
 ```
