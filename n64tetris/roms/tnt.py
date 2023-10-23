@@ -388,3 +388,29 @@ class TheNewTetrisRom(BaseRom):
         value &= 0xFF
 
         self.data[addr1 : addr1 + 1] = bytes([value])
+
+    def modify_screens(self, start, end):
+        if start < 0:
+            print("screens error: {START} must not be less than 0", file=sys.stderr)
+            sys.exit(1)
+        if end > 7:
+            print("screens error: {END} must not be greater than 7", file=sys.stderr)
+            sys.exit(1)
+        if end - start < 0:
+            print("screens error: {END} must not be less than {START}", file=sys.stderr)
+            sys.exit(1)
+
+        addr1 = 0x0570E0
+        addr2 = 0x0570E8
+        self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
+        self.data[addr1 + 3 : addr1 + 4] = bytes([start])
+        self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
+        self.data[addr2 + 3 : addr2 + 4] = bytes([end])
+
+        # Attract mode
+        addr1 = 0x0571D8
+        addr2 = 0x0571E0
+        self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
+        self.data[addr1 + 3 : addr1 + 4] = bytes([start])
+        self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
+        self.data[addr2 + 3 : addr2 + 4] = bytes([end])

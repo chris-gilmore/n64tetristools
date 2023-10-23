@@ -14,6 +14,9 @@
 
     # by name
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --image modified_finale_boiler.png -n finale_boiler
+
+    # Play only Finale
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --screens 7 7
 """
 
 import argparse
@@ -57,6 +60,9 @@ def main():
     group_delay.add_argument('--square', metavar='JIFFIES', type=int, help='(default: 45, minimum: 0)')
     group_delay.add_argument('--line', metavar='JIFFIES', type=int, help='(default: 24, minimum: 1)')
 
+    group_screens = parser.add_argument_group('screens', 'Subrange of screens to play -- only works if all wonders unlocked.  For example, --screens 2 5 would allow only screens Egypt, Celtic, Africa, and Japan.  Play only Finale: --screens 7 7')
+    group_screens.add_argument('--screens', nargs=2, metavar='#', type=int, help='(default: 0 7)')
+
     args = parser.parse_args()
 
     rom = TheNewTetrisRom(verbose=args.verbose)
@@ -97,6 +103,10 @@ def main():
 
     if args.line is not None:
         rom.modify_line_delay(args.line)
+
+    if args.screens is not None:
+        start, end = args.screens
+        rom.modify_screens(start, end)
 
     rom.to_file(args.DEST)
 
