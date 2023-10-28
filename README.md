@@ -62,9 +62,8 @@ delay:
   --line JIFFIES    (default: 24, minimum: 1)
 
 screens:
-  Subrange of screens to play -- only works if all wonders unlocked. For
-  example, --screens 2 5 would allow only screens Egypt, Celtic, Africa, and
-  Japan. Play only Finale: --screens 7 7
+  Subrange of screens to play. For example, --screens 2 5 would allow only
+  screens Egypt, Celtic, Africa, and Japan. Play only Finale: --screens 7 7
 
   --screens # #     (default: 0 7)
 ```

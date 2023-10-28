@@ -402,15 +402,19 @@ class TheNewTetrisRom(BaseRom):
 
         addr1 = 0x0570E0
         addr2 = 0x0570E8
+        addr3 = 0x0570D7
         self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
         self.data[addr1 + 3 : addr1 + 4] = bytes([start])
         self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
         self.data[addr2 + 3 : addr2 + 4] = bytes([end])
+        self.data[addr3 : addr3 + 1] = bytes([0])
 
         # Attract mode
         addr1 = 0x0571D8
         addr2 = 0x0571E0
+        addr3 = 0x0571CF
         self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
         self.data[addr1 + 3 : addr1 + 4] = bytes([start])
         self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
         self.data[addr2 + 3 : addr2 + 4] = bytes([end])
+        self.data[addr3 : addr3 + 1] = bytes([0])
