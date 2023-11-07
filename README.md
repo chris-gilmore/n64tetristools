@@ -4,14 +4,14 @@ usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
                      [--seed VALUE] [--bag # # #] [--sprint TIME]
                      [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
                      [--lock JIFFIES] [--square JIFFIES] [--line JIFFIES]
-                     [--screens # #]
+                     [--screens # #] [--stat TYPE] [--xy # #] [--rgba # # # #]
                      SRC DEST
 
 positional arguments:
   SRC               source rom file
   DEST              output rom file
 
-optional arguments:
+options:
   -h, --help        show this help message and exit
   -v, --verbose     increase verbosity
 
@@ -66,6 +66,13 @@ screens:
   screens Egypt, Celtic, Africa, and Japan. Play only Finale: --screens 7 7
 
   --screens # #     (default: 0 7)
+
+stat:
+  Modify stat properties.
+
+  --stat TYPE       1:PlayerName, 2:LineCount, 3:TimeRemaining
+  --xy # #          position: X Y
+  --rgba # # # #    color: R G B A
 ```
 
 ```
@@ -126,4 +133,7 @@ screens:
 
     # Play only Finale
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --screens 7 7
+
+    # Move time_remaining (sprint) and change its color
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --stat 3 --xy 235 150 --rgba 0xc0 0xc0 0xc0 0xff
 ```

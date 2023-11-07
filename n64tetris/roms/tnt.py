@@ -322,6 +322,7 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr3 : addr3 + 1] = bytes([n])
         self.data[addr4 : addr4 + 1] = bytes([bag_size])
 
+    # Sprint goal (time)
     def modify_sprint(self, value):
         addr1 = 0x01851A
 
@@ -331,6 +332,7 @@ class TheNewTetrisRom(BaseRom):
 
         self.data[addr1 : addr1 + 2] = time[0:2]
 
+    # Ultra goal (lines)
     def modify_ultra(self, value):
         # for display
         addr1 = 0x01852A
@@ -366,27 +368,24 @@ class TheNewTetrisRom(BaseRom):
         base_address = 0x096210 + 6
         self.modify_piece_color(base_address, piece, r, g, b)
 
+    # Piece lock delay
     def modify_lock_delay(self, value):
         addr1 = 0x02D2E7
         addr2 = 0x02E0F3
-
         value &= 0xFF
-
         self.data[addr1 : addr1 + 1] = bytes([value])
         self.data[addr2 : addr2 + 1] = bytes([value])
 
+    # Line clearing delay
     def modify_line_delay(self, value):
         addr1 = 0x02F59B
-
         value &= 0xFF
-
         self.data[addr1 : addr1 + 1] = bytes([value])
 
+    # Square forming delay
     def modify_square_delay(self, value):
         addr1 = 0x030973
-
         value &= 0xFF
-
         self.data[addr1 : addr1 + 1] = bytes([value])
 
     def modify_screens(self, start, end):
@@ -400,21 +399,107 @@ class TheNewTetrisRom(BaseRom):
             print("screens error: {END} must not be less than {START}", file=sys.stderr)
             sys.exit(1)
 
-        addr1 = 0x0570E0
-        addr2 = 0x0570E8
-        addr3 = 0x0570D7
-        self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
-        self.data[addr1 + 3 : addr1 + 4] = bytes([start])
-        self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
-        self.data[addr2 + 3 : addr2 + 4] = bytes([end])
-        self.data[addr3 : addr3 + 1] = bytes([0])
+        for addr1, addr2, addr3 in [(0x0570E0, 0x0570E8, 0x0570D7),    # Game mode
+                                    (0x0571D8, 0x0571E0, 0x0571CF)]:   # Attract mode
+            # Enables all screens without needing to unlock all wonders
+            self.data[addr3 : addr3 + 1] = bytes([0])
+            # Now limit the set of allowable screens
+            self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
+            self.data[addr1 + 3 : addr1 + 4] = bytes([start])
+            self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
+            self.data[addr2 + 3 : addr2 + 4] = bytes([end])
 
-        # Attract mode
-        addr1 = 0x0571D8
-        addr2 = 0x0571E0
-        addr3 = 0x0571CF
-        self.data[addr1 : addr1 + 3] = b'\x24\x04\x00'   # addiu $a0, $zero, ...
-        self.data[addr1 + 3 : addr1 + 4] = bytes([start])
-        self.data[addr2 : addr2 + 3] = b'\x24\x05\x00'   # addiu $a1, $zero, ...
-        self.data[addr2 + 3 : addr2 + 4] = bytes([end])
-        self.data[addr3 : addr3 + 1] = bytes([0])
+    def modify_stat_position(self, stat, x, y):
+        if stat < 1 or stat > 3:
+            print("stat error: Stat type must be between 1 and 3", file=sys.stderr)
+            sys.exit(1)
+
+        if stat == 1:
+            """
+            1p, Finale screen, player 1 name
+            /* 02A3E4 0002A3E4 24060125 */  addiu $a2, $zero, 0x125
+            /* 02A3E8 0002A3E8 240700CA */  addiu $a3, $zero, 0xca
+            """
+            addr1 = 0x02A3E6
+            addr2 = 0x02A3EA
+
+        elif stat == 2:
+            """
+            1p, All screens, player 1 line count
+            /* 0262B4 000262B4 24080127 */  addiu $t0, $zero, 0x127
+            /* 0262C4 000262C4 240F00B7 */  addiu $t7, $zero, 0xb7
+            """
+            addr1 = 0x0262B6
+            addr2 = 0x0262C6
+
+        elif stat == 3:
+            """
+            1p, All screens, player 1 time remaining
+            /* 02A50C 0002A50C 24060157 */  addiu $a2, $zero, 0x157
+            /* 02A510 0002A510 240700E6 */  addiu $a3, $zero, 0xe6
+            """
+            addr1 = 0x02A50E
+            addr2 = 0x02A512
+
+        x &= 0xFFFF
+        x_bytes = x.to_bytes(2, byteorder='big')
+
+        y &= 0xFFFF
+        y_bytes = y.to_bytes(2, byteorder='big')
+
+        self.data[addr1 : addr1 + 2] = x_bytes[0:2]
+        self.data[addr2 : addr2 + 2] = y_bytes[0:2]
+
+    def modify_stat_color(self, stat, r, g, b, a):
+        if stat < 1 or stat > 3:
+            print("stat error: Stat type must be between 1 and 3", file=sys.stderr)
+            sys.exit(1)
+
+        if stat == 1:
+            """
+            1p, Finale screen, player 1 name
+            /* 02A3B8 0002A3B8 241800FF */  addiu $t8, $zero, 0xff
+            /* 02A3BC 0002A3BC 241900FF */  addiu $t9, $zero, 0xff
+            /* 02A3C0 0002A3C0 240800FF */  addiu $t0, $zero, 0xff
+            /* 02A3C4 0002A3C4 240E00FF */  addiu $t6, $zero, 0xff
+            """
+            addr1 = 0x02A3BB
+            addr2 = 0x02A3BF
+            addr3 = 0x02A3C3
+            addr4 = 0x02A3C7
+
+        elif stat == 2:
+            """
+            1p,2p,3p,4p, All screens, player 1,2,3,4 line count
+            /* 018B38 00018B38 241800FF */  addiu $t8, $zero, 0xff
+            /* 018B3C 00018B3C 241900FF */  addiu $t9, $zero, 0xff
+            /* 018B40 00018B40 240800FF */  addiu $t0, $zero, 0xff
+            /* 018B44 00018B44 240900FF */  addiu $t1, $zero, 0xff
+            """
+            addr1 = 0x018B3B
+            addr2 = 0x018B3F
+            addr3 = 0x018B43
+            addr4 = 0x018B47
+
+        elif stat == 3:
+            """
+            1p, All screens, player 1 time remaining
+            /* 02A4E8 0002A4E8 240D00FF */  addiu $t5, $zero, 0xff
+            /* 02A4EC 0002A4EC 240F00FF */  addiu $t7, $zero, 0xff
+            /* 02A4F0 0002A4F0 241800FF */  addiu $t8, $zero, 0xff
+            /* 02A4F4 0002A4F4 241900FF */  addiu $t9, $zero, 0xff
+            """
+            addr1 = 0x02A4EB
+            addr2 = 0x02A4EF
+            addr3 = 0x02A4F3
+            addr4 = 0x02A4F7
+
+        r &= 0xFF
+        g &= 0xFF
+        b &= 0xFF
+        a &= 0xFF
+
+        self.data[addr1 : addr1 + 1] = bytes([r])
+        self.data[addr2 : addr2 + 1] = bytes([g])
+        self.data[addr3 : addr3 + 1] = bytes([b])
+        self.data[addr4 : addr4 + 1] = bytes([a])

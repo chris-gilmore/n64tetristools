@@ -17,6 +17,9 @@
 
     # Play only Finale
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --screens 7 7
+
+    # Move time_remaining (sprint) and change its color
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --stat 3 --xy 235 150 --rgba 0xc0 0xc0 0xc0 0xff
 """
 
 import argparse
@@ -63,6 +66,11 @@ def main():
     group_screens = parser.add_argument_group('screens', 'Subrange of screens to play.  For example, --screens 2 5 would allow only screens Egypt, Celtic, Africa, and Japan.  Play only Finale: --screens 7 7')
     group_screens.add_argument('--screens', nargs=2, metavar='#', type=int, help='(default: 0 7)')
 
+    group_stat = parser.add_argument_group('stat', 'Modify stat properties.')
+    group_stat.add_argument('--stat', metavar='TYPE', type=int, help='1:PlayerName, 2:LineCount, 3:TimeRemaining')
+    group_stat.add_argument('--xy', nargs=2, metavar='#', type=auto_int, help='position: X Y')
+    group_stat.add_argument('--rgba', nargs=4, metavar='#', type=auto_int, help='color: R G B A')
+
     args = parser.parse_args()
 
     rom = TheNewTetrisRom(verbose=args.verbose)
@@ -107,6 +115,14 @@ def main():
     if args.screens is not None:
         start, end = args.screens
         rom.modify_screens(start, end)
+
+    if args.stat is not None:
+        if args.xy is not None:
+            x, y = args.xy
+            rom.modify_stat_position(args.stat, x, y)
+        if args.rgba is not None:
+            r, g, b, a = args.rgba
+            rom.modify_stat_color(args.stat, r, g, b, a)
 
     rom.to_file(args.DEST)
 
