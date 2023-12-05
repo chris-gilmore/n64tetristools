@@ -20,6 +20,9 @@
 
     # Move time_remaining (sprint) and change its color
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --stat 3 --xy 235 150 --rgba 0xc0 0xc0 0xc0 0xff
+
+    # Initial hold piece is always blue stick (5:I piece).
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --ihp 5
 """
 
 import argparse
@@ -70,6 +73,9 @@ def main():
     group_stat.add_argument('--stat', metavar='TYPE', type=int, help='1:PlayerName, 2:LineCount, 3:TimeRemaining')
     group_stat.add_argument('--xy', nargs=2, metavar='#', type=auto_int, help='position: X Y')
     group_stat.add_argument('--rgba', nargs=4, metavar='#', type=auto_int, help='color: R G B A')
+
+    group_ihp = parser.add_argument_group('ihp', 'Set initial hold piece.')
+    group_ihp.add_argument('--ihp', metavar='TYPE', type=int, help='0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O')
 
     args = parser.parse_args()
 
@@ -123,6 +129,9 @@ def main():
         if args.rgba is not None:
             r, g, b, a = args.rgba
             rom.modify_stat_color(args.stat, r, g, b, a)
+
+    if args.ihp is not None:
+        rom.modify_initial_hold_piece(args.ihp)
 
     rom.to_file(args.DEST)
 

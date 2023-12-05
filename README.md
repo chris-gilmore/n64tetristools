@@ -5,6 +5,7 @@ usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
                      [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
                      [--lock JIFFIES] [--square JIFFIES] [--line JIFFIES]
                      [--screens # #] [--stat TYPE] [--xy # #] [--rgba # # # #]
+                     [--ihp TYPE]
                      SRC DEST
 
 positional arguments:
@@ -73,6 +74,11 @@ stat:
   --stat TYPE       1:PlayerName, 2:LineCount, 3:TimeRemaining
   --xy # #          position: X Y
   --rgba # # # #    color: R G B A
+
+ihp:
+  Set initial hold piece.
+
+  --ihp TYPE        0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
 ```
 
 ```
@@ -136,4 +142,7 @@ stat:
 
     # Move time_remaining (sprint) and change its color
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --stat 3 --xy 235 150 --rgba 0xc0 0xc0 0xc0 0xff
+
+    # Initial hold piece is always blue stick (5:I piece).
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --ihp 5
 ```

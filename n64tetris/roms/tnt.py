@@ -503,3 +503,13 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr2 : addr2 + 1] = bytes([g])
         self.data[addr3 : addr3 + 1] = bytes([b])
         self.data[addr4 : addr4 + 1] = bytes([a])
+
+    def modify_initial_hold_piece(self, piece):
+        if piece < 0 or piece > 6:
+            print("ihp error: Piece type must be between 0 and 6", file=sys.stderr)
+            sys.exit(1)
+
+        addr1 = 0x02C868
+
+        self.data[addr1 : addr1 + 3] = b'\x24\x0A\x00'   # addiu $t2, $zero, ...
+        self.data[addr1 + 3 : addr1 + 4] = bytes([piece])
