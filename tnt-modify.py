@@ -23,6 +23,9 @@
 
     # Initial hold piece is always blue stick (5:I piece).
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --ihp 5
+
+    # Totally uncapped and unlocked
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --spawn 1 --hold 1 --lock 10 --square 0 --line 1 --screens 0 7
 """
 
 import argparse
@@ -61,7 +64,9 @@ def main():
     group_piece.add_argument('--dc', nargs=3, metavar='#', type=auto_int, help='diffuse color: R G B')
     group_piece.add_argument('--sc', nargs=3, metavar='#', type=auto_int, help='specular color: R G B (default: 0xFF 0xFF 0xFF)')
 
-    group_delay = parser.add_argument_group('delay', 'Delay timers for piece locking, square forming, and line clearing containing gold or silver.  One jiffy is a sixtieth of a second.')
+    group_delay = parser.add_argument_group('delay', 'Delay timers for piece spawning, holding, locking, square forming, and line clearing containing gold or silver.  One jiffy is a sixtieth of a second.')
+    group_delay.add_argument('--spawn', metavar='JIFFIES', type=int, help='(default: 20, minimum: 1)')
+    group_delay.add_argument('--hold', metavar='JIFFIES', type=int, help='(default: 16, minimum: 1)')
     group_delay.add_argument('--lock', metavar='JIFFIES', type=int, help='(default: 20, minimum: 0)')
     group_delay.add_argument('--square', metavar='JIFFIES', type=int, help='(default: 45, minimum: 0)')
     group_delay.add_argument('--line', metavar='JIFFIES', type=int, help='(default: 24, minimum: 1)')
@@ -108,6 +113,12 @@ def main():
         if args.sc is not None:
             r, g, b = args.sc
             rom.modify_piece_specular_color(args.piece, r, g, b)
+
+    if args.spawn is not None:
+        rom.modify_spawn_delay(args.spawn)
+
+    if args.hold is not None:
+        rom.modify_hold_delay(args.hold)
 
     if args.lock is not None:
         rom.modify_lock_delay(args.lock)

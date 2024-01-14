@@ -3,9 +3,9 @@
 usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
                      [--seed VALUE] [--bag # # #] [--sprint TIME]
                      [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
-                     [--lock JIFFIES] [--square JIFFIES] [--line JIFFIES]
-                     [--screens # #] [--stat TYPE] [--xy # #] [--rgba # # # #]
-                     [--ihp TYPE]
+                     [--spawn JIFFIES] [--hold JIFFIES] [--lock JIFFIES]
+                     [--square JIFFIES] [--line JIFFIES] [--screens # #]
+                     [--stat TYPE] [--xy # #] [--rgba # # # #] [--ihp TYPE]
                      SRC DEST
 
 positional arguments:
@@ -55,9 +55,12 @@ piece:
   --sc # # #        specular color: R G B (default: 0xFF 0xFF 0xFF)
 
 delay:
-  Delay timers for piece locking, square forming, and line clearing
-  containing gold or silver. One jiffy is a sixtieth of a second.
+  Delay timers for piece spawning, holding, locking, square forming, and
+  line clearing containing gold or silver. One jiffy is a sixtieth of a
+  second.
 
+  --spawn JIFFIES   (default: 20, minimum: 1)
+  --hold JIFFIES    (default: 16, minimum: 1)
   --lock JIFFIES    (default: 20, minimum: 0)
   --square JIFFIES  (default: 45, minimum: 0)
   --line JIFFIES    (default: 24, minimum: 1)
@@ -145,4 +148,7 @@ ihp:
 
     # Initial hold piece is always blue stick (5:I piece).
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --ihp 5
+
+    # Totally uncapped and unlocked
+    $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --spawn 1 --hold 1 --lock 10 --square 0 --line 1 --screens 0 7
 ```

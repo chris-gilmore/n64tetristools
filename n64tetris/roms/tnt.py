@@ -368,6 +368,21 @@ class TheNewTetrisRom(BaseRom):
         base_address = 0x096210 + 6
         self.modify_piece_color(base_address, piece, r, g, b)
 
+    # Piece spawn delay
+    def modify_spawn_delay(self, value):
+        addr1 = 0x02EB73
+        value &= 0xFF
+        self.data[addr1 : addr1 + 1] = bytes([value])
+
+    # Piece hold delay
+    def modify_hold_delay(self, value):
+        addr1 = 0x02C7D3
+        value &= 0xFF
+        if value == 0:
+            print("Piece hold delay of 0 will freeze the game/console.", file=sys.stderr)
+            sys.exit(1)
+        self.data[addr1 : addr1 + 1] = bytes([value])
+
     # Piece lock delay
     def modify_lock_delay(self, value):
         addr1 = 0x02D2E7
