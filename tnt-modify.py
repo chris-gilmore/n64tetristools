@@ -82,6 +82,9 @@ def main():
     group_ihp = parser.add_argument_group('ihp', 'Set initial hold piece.')
     group_ihp.add_argument('--ihp', metavar='TYPE', type=int, help='0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O')
 
+    group_sqsz = parser.add_argument_group('sqsz', 'Square size.')
+    group_sqsz.add_argument('--sqsz', metavar='VALUE', type=auto_int, help='Square size')
+
     args = parser.parse_args()
 
     rom = TheNewTetrisRom(verbose=args.verbose)
@@ -143,6 +146,9 @@ def main():
 
     if args.ihp is not None:
         rom.modify_initial_hold_piece(args.ihp)
+
+    if args.sqsz is not None:
+        rom.modify_square_size(args.sqsz)
 
     rom.to_file(args.DEST)
 

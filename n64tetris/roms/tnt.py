@@ -528,3 +528,101 @@ class TheNewTetrisRom(BaseRom):
 
         self.data[addr1 : addr1 + 3] = b'\x24\x0A\x00'   # addiu $t2, $zero, ...
         self.data[addr1 + 3 : addr1 + 4] = bytes([piece])
+
+    # value must be in the set {2, 4, 6, 8}
+    def modify_square_size(self, value):
+        """
+        function: FUN_8006a9f4
+        /* 030D18 00030D18 2A210007 */ 	slti  $at, $s1,	7       // change to 5
+        /* 030D28 00030D28 2A410011 */ 	slti  $at, $s2,	0x11    // change to 0xf
+        /* 030DC4 00030DC4 2A210007 */ 	slti  $at, $s1,	7       // change to 5
+        /* 030DD4 00030DD4 2A410011 */ 	slti  $at, $s2,	0x11    // change to 0xf
+
+        function: FUN_8006a4ec
+        /* 0307AC 000307AC 29C10007 */ 	 slti  $at, $t6, 7      // change to 5
+        /* 0307B4 000307B4 29E10011 */ 	 slti  $at, $t7, 0x11   // change to 0xf
+        /* 0307D4 000307D4 24100004 */ 	addiu $s0, $zero, 4     // change to 9
+        /* 030814 00030814 240C0004 */ 	addiu $t4, $zero, 4     // change to 6
+        /* 030828 00030828 240D0004 */ 	addiu $t5, $zero, 4     // change to 6
+        /* 0308C8 000308C8 24010004 */ 	addiu $at, $zero, 4     // change to 9
+        /* 0308F4 000308F4 26310018 */ 	addiu $s1, $s1,	0x18    // change to 0x10
+
+        function: FUN_8006a740
+        /* 0309E4 000309E4 25CFFFFD */  addiu $t7, $t6, -3      // change to -5
+        /* 0309F8 000309F8 2719FFFD */  addiu $t9, $t8, -3      // change to -5
+        /* 030A1C 00030A1C 29810007 */  slti  $at, $t4, 7       // change to 5
+        /* 030A28 00030A28 240D0006 */  addiu $t5, $zero, 6     // change to 4
+        /* 030A4C 00030A4C 2B010011 */  slti  $at, $t8, 0x11    // change to 0xf
+        /* 030A58 00030A58 24190010 */  addiu $t9, $zero, 0x10  // change to 0xe
+
+        function: FUN_8006b050
+        /* 0313A0 000313A0 272CFFD4 */  addiu $t4, $t9, -0x2c   // change to -0x42
+        /* 0313C0 000313C0 250BFFD4 */  addiu $t3, $t0, -0x2c   // change to -0x42
+
+        function: FUN_8006a050
+        /* 0304DC 000304DC 25680004 */  addiu $t0, $t3, 4        // change to 6
+        /* 0304F4 000304F4 25CC0004 */  addiu $t4, $t6, 4        // change to 6
+        /* 030530 00030530 240B0004 */  addiu $t3, $zero, 4      // change to 6
+        /* 03053C 0003053C 24080004 */  addiu $t0, $zero, 4      // change to 6
+        /* 030598 00030598 26F70018 */  addiu $s7, $s7, 0x18     // change to 0x10
+        /* 0305A8 000305A8 240B0010 */  addiu $t3, $zero, 0x10   // change to 0x24
+        """
+        addr1 = 0x030D1B
+        addr2 = 0x030D2B
+        addr3 = 0x030DC7
+        addr4 = 0x030DD7
+
+        addr5 = 0x0307AF
+        addr6 = 0x0307B7
+        addr7 = 0x0307D7
+        addr8 = 0x030817
+        addr9 = 0x03082B
+        addr10 = 0x0308CB
+        addr11 = 0x0308F7
+
+        addr12 = 0x0309E7
+        addr13 = 0x0309FB
+        addr14 = 0x030A1F
+        addr15 = 0x030A2B
+        addr16 = 0x030A4F
+        addr17 = 0x030A5B
+
+        addr18 = 0x0313A3
+        addr19 = 0x0313C3
+
+        addr20 = 0x0304DF
+        addr21 = 0x0304F7
+        addr22 = 0x030533
+        addr23 = 0x03053F
+        addr24 = 0x03059B
+        addr25 = 0x0305AB
+
+        self.data[addr1 : addr1 + 1] = bytes([11 - value])
+        self.data[addr2 : addr2 + 1] = bytes([21 - value])
+        self.data[addr3 : addr3 + 1] = bytes([11 - value])
+        self.data[addr4 : addr4 + 1] = bytes([21 - value])
+
+        self.data[addr5 : addr5 + 1] = bytes([11 - value])
+        self.data[addr6 : addr6 + 1] = bytes([21 - value])
+        self.data[addr7 : addr7 + 1] = bytes([value * value // 4])
+        self.data[addr8 : addr8 + 1] = bytes([value])
+        self.data[addr9 : addr9 + 1] = bytes([value])
+        self.data[addr10 : addr10 + 1] = bytes([value * value // 4])
+        self.data[addr11 : addr11 + 1] = bytes([(10 - value) * 4])
+
+        self.data[addr12 : addr12 + 1] = bytes([257 - value])
+        self.data[addr13 : addr13 + 1] = bytes([257 - value])
+        self.data[addr14 : addr14 + 1] = bytes([11 - value])
+        self.data[addr15 : addr15 + 1] = bytes([10 - value])
+        self.data[addr16 : addr16 + 1] = bytes([21 - value])
+        self.data[addr17 : addr17 + 1] = bytes([20 - value])
+
+        self.data[addr18 : addr18 + 1] = bytes([256 - (value * 11)])
+        self.data[addr19 : addr19 + 1] = bytes([256 - (value * 11)])
+
+        self.data[addr20 : addr20 + 1] = bytes([value])
+        self.data[addr21 : addr21 + 1] = bytes([value])
+        self.data[addr22 : addr22 + 1] = bytes([value])
+        self.data[addr23 : addr23 + 1] = bytes([value])
+        self.data[addr24 : addr24 + 1] = bytes([(10 - value) * 4])
+        self.data[addr25 : addr25 + 1] = bytes([value * value])
