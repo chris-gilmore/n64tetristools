@@ -1,6 +1,8 @@
 import sys
 from enum import Enum, auto
 
+from .. import utils
+
 class AssetType(Enum):
     UNKNOWN = auto()
 
@@ -17,6 +19,7 @@ class BaseRom:
         self.data = bytearray(open(filename, 'rb').read())
 
     def to_file(self, filename):
+        utils.sm64_update_checksums(self.data)
         open(filename, 'wb').write(self.data)
 
     def guess_asset(self, raw):

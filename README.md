@@ -6,6 +6,7 @@ usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
                      [--spawn JIFFIES] [--hold JIFFIES] [--lock JIFFIES]
                      [--square JIFFIES] [--line JIFFIES] [--screens # #]
                      [--stat TYPE] [--xy # #] [--rgba # # # #] [--ihp TYPE]
+                     [--sqsz {2,4,6,8}]
                      SRC DEST
 
 positional arguments:
@@ -82,6 +83,11 @@ ihp:
   Set initial hold piece.
 
   --ihp TYPE        0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
+
+sqsz:
+  Square size.
+
+  --sqsz {2,4,6,8}  (default: 4)
 ```
 
 ```

@@ -83,7 +83,7 @@ def main():
     group_ihp.add_argument('--ihp', metavar='TYPE', type=int, help='0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O')
 
     group_sqsz = parser.add_argument_group('sqsz', 'Square size.')
-    group_sqsz.add_argument('--sqsz', metavar='VALUE', type=auto_int, help='Square size')
+    group_sqsz.add_argument('--sqsz', type=int, choices=[2, 4, 6, 8], help='(default: 4)')
 
     args = parser.parse_args()
 

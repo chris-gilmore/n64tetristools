@@ -2,8 +2,8 @@ import sys
 import struct
 from enum import Enum, auto
 
-from PIL import Image
-import lzo
+#from PIL import Image
+#import lzo
 
 from .base import BaseRom
 from .. import utils
@@ -26,6 +26,8 @@ class TheNewTetrisRom(BaseRom):
         self.decoders = (self.h2o_decode,)
 
     def h2os_decompress(self, addr, buflen):
+        import lzo
+
         success = False
 
         for end in range(addr+3, len(self.data) + 1):
@@ -90,6 +92,8 @@ class TheNewTetrisRom(BaseRom):
         return AssetType.UNKNOWN, AssetFormat.UNKNOWN, info
 
     def extract_image_or_anim(self, i_addrs):
+        from PIL import Image
+
         image_stack = []
         for i_addr in i_addrs:
             raw, _, asset_type, asset_format, asset_info, err = self.extract_asset(i_addr)
@@ -173,6 +177,8 @@ class TheNewTetrisRom(BaseRom):
             sys.exit(1)
 
     def h2os_compress(self, raw):
+        import lzo
+
         return lzo.optimize(lzo.compress(raw, 9, False), False, len(raw))
 
     def insert_asset(self, addr, raw, info):
@@ -195,6 +201,8 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr+4 : addr+4 + 4] = buflen.to_bytes(4, byteorder='big')
 
     def insert_image(self, filename, i_addr):
+        from PIL import Image
+
         with Image.open(filename) as im:
             # TODO:
             # If we need to convert to mode='L', then we ought to do something different than what is done below, so that we may properly deal with transparency.
@@ -532,6 +540,7 @@ class TheNewTetrisRom(BaseRom):
     # value must be in the set {2, 4, 6, 8}
     def modify_square_size(self, value):
         """
+                                                                // For square size of 6
         function: FUN_8006a9f4
         /* 030D18 00030D18 2A210007 */ 	slti  $at, $s1,	7       // change to 5
         /* 030D28 00030D28 2A410011 */ 	slti  $at, $s2,	0x11    // change to 0xf
@@ -560,12 +569,12 @@ class TheNewTetrisRom(BaseRom):
         /* 0313C0 000313C0 250BFFD4 */  addiu $t3, $t0, -0x2c   // change to -0x42
 
         function: FUN_8006a050
-        /* 0304DC 000304DC 25680004 */  addiu $t0, $t3, 4        // change to 6
-        /* 0304F4 000304F4 25CC0004 */  addiu $t4, $t6, 4        // change to 6
-        /* 030530 00030530 240B0004 */  addiu $t3, $zero, 4      // change to 6
-        /* 03053C 0003053C 24080004 */  addiu $t0, $zero, 4      // change to 6
-        /* 030598 00030598 26F70018 */  addiu $s7, $s7, 0x18     // change to 0x10
-        /* 0305A8 000305A8 240B0010 */  addiu $t3, $zero, 0x10   // change to 0x24
+        /* 0304DC 000304DC 25680004 */  addiu $t0, $t3, 4       // change to 6
+        /* 0304F4 000304F4 25CC0004 */  addiu $t4, $t6, 4       // change to 6
+        /* 030530 00030530 240B0004 */  addiu $t3, $zero, 4     // change to 6
+        /* 03053C 0003053C 24080004 */  addiu $t0, $zero, 4     // change to 6
+        /* 030598 00030598 26F70018 */  addiu $s7, $s7, 0x18    // change to 0x10
+        /* 0305A8 000305A8 240B0010 */  addiu $t3, $zero, 0x10  // change to 0x24
         """
         addr1 = 0x030D1B
         addr2 = 0x030D2B
