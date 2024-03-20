@@ -635,3 +635,63 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr23 : addr23 + 1] = bytes([value])
         self.data[addr24 : addr24 + 1] = bytes([(10 - value) * 4])
         self.data[addr25 : addr25 + 1] = bytes([value * value])
+
+    def modify_name_from_seed(self):
+        addr1 = 0x0376AC
+        addr2 = 0x0A4670  # immediately after "SPECIAL THANKS " in the credits text
+
+        """
+        Jump out:
+          0A4670 + 039D80
+          0DE3F0
+          0DE3F0 / 4
+          0378FC
+
+        Jump back in:
+          0376AC + 8
+          0376B4
+          0376B4 + 039D80
+          071434
+          071434 / 4
+          01C50D
+
+        000a15f0  30 31 32 33 34 35 36 37  38 39 61 62 63 64 65 66  |0123456789abcdef|
+        000a1600  00 00 00 00 30 31 32 33  34 35 36 37 38 39 41 42  |....0123456789AB|
+        000a1610  43 44 45 46 00 00 00 00  00 00 00 00 00 00 00 00  |CDEF............|
+
+        Convert from rom address to game address:
+          A1604 + 80039D80
+          800DB384
+        """
+
+        # Jump out
+        self.data[addr1 : addr1 + 4] = b'\x08\x03\x78\xFC'        # j 0x0DE3F0
+
+        # $t7 holds seed
+        # 8011EB3C: GILLY    (player_1 name)
+
+        # Copy $t7 (seed) into $t6
+        self.data[addr2: addr2 + 4] = b'\x01\xE0\x70\x25'         # move $t6, $t7
+
+        # $t1 is Name + 8
+        self.data[addr2 + 4: addr2 + 8] = b'\x3C\x09\x80\x11'     # lui $t1, 0x8011
+        self.data[addr2 + 8 : addr2 + 12] = b'\x35\x29\xEB\x44'   # ori $t1, $t1, 0xEB44
+
+        # $t2 is "0123456789ABCDEF"
+        self.data[addr2 + 12 : addr2 + 16] = b'\x3C\x0A\x80\x0D'  # lui $t2, 0x800D
+        self.data[addr2 + 16 : addr2 + 20] = b'\x35\x4A\xB3\x84'  # ori $t2, $t2, 0xB384
+
+        self.data[addr2 + 20 : addr2 + 24] = b'\x24\x0C\x00\x08'  # addiu $t4, $zero, 0x8
+        # $t6 is seed
+        self.data[addr2 + 24 : addr2 + 28] = b'\x31\xC8\x00\x0F'  # andi $t0, $t6, 0xF
+        self.data[addr2 + 28 : addr2 + 32] = b'\x01\x0A\x58\x21'  # addu $t3, $t0, $t2
+        self.data[addr2 + 32 : addr2 + 36] = b'\x91\x68\x00\x00'  # lbu $t0, ($t3)
+        self.data[addr2 + 36 : addr2 + 40] = b'\x00\x0E\x71\x02'  # srl $t6, $t6, 4
+        self.data[addr2 + 40 : addr2 + 44] = b'\x25\x29\xFF\xFF'  # addiu $t1, $t1, -1
+        self.data[addr2 + 44 : addr2 + 48] = b'\x25\x8C\xFF\xFF'  # addiu $t4, $t4, -1
+        self.data[addr2 + 48 : addr2 + 52] = b'\x1D\x80\xFF\xF9'  # bgtz $t4, 0xFFF9
+        self.data[addr2 + 52 : addr2 + 56] = b'\xA1\x28\x00\x00'  # sb $t0, ($t1)
+
+        # Jump back in
+        self.data[addr2 + 56 : addr2 + 60] = b'\x08\x01\xC5\x0D'  # j 0x071434
+        self.data[addr2 + 60 : addr2 + 64] = b'\x00\x00\x00\x00'  # nop

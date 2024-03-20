@@ -38,6 +38,7 @@ def auto_int(x):
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-v', '--verbose', action='store_true', help='increase verbosity')
+    parser.add_argument('-s', '--showseed', action='store_true', help='modifies name from seed')
     parser.add_argument('SRC', help='source rom file')
     parser.add_argument('DEST', help='output rom file')
 
@@ -149,6 +150,9 @@ def main():
 
     if args.sqsz is not None:
         rom.modify_square_size(args.sqsz)
+
+    if args.showseed:
+        rom.modify_name_from_seed()
 
     rom.to_file(args.DEST)
 

@@ -1,6 +1,6 @@
 
 ```
-usage: tnt-modify.py [-h] [-v] [--image FILE] [-i ADDR | -n NAME]
+usage: tnt-modify.py [-h] [-v] [-s] [--image FILE] [-i ADDR | -n NAME]
                      [--seed VALUE] [--bag # # #] [--sprint TIME]
                      [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
                      [--spawn JIFFIES] [--hold JIFFIES] [--lock JIFFIES]
@@ -16,6 +16,7 @@ positional arguments:
 options:
   -h, --help        show this help message and exit
   -v, --verbose     increase verbosity
+  -s, --showseed    modifies name from seed
 
 image:
   Insert image either by address or by name.
