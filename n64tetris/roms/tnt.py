@@ -692,6 +692,12 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr2 + 48 : addr2 + 52] = b'\x1D\x80\xFF\xF9'  # bgtz $t4, 0xFFF9
         self.data[addr2 + 52 : addr2 + 56] = b'\xA1\x28\x00\x00'  # sb $t0, ($t1)
 
+        # Store $t7 (seed) into P4_ptr
+        # $t5 is 0x8011EB38 (P4_ptr)
+        self.data[addr2 + 56 : addr2 + 60] = b'\x3C\x0D\x80\x11'  # lui $t5, 0x8011
+        self.data[addr2 + 60 : addr2 + 64] = b'\x35\xAD\xEB\x38'  # ori $t5, $t5, 0xEB38
+        self.data[addr2 + 64 : addr2 + 68] = b'\xAD\xAF\x00\x00'  # sw $t7, ($t5)
+
         # Jump back in
-        self.data[addr2 + 56 : addr2 + 60] = b'\x08\x01\xC5\x0D'  # j 0x071434
-        self.data[addr2 + 60 : addr2 + 64] = b'\x00\x00\x00\x00'  # nop
+        self.data[addr2 + 68 : addr2 + 72] = b'\x08\x01\xC5\x0D'  # j 0x071434
+        self.data[addr2 + 72 : addr2 + 76] = b'\x00\x00\x00\x00'  # nop
