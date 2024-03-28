@@ -14,6 +14,7 @@ class BaseRom:
         self.verbose = verbose
         self.decoders = ()
         self.data = bytearray()
+        self.asm_addr = None
 
     def from_file(self, filename):
         self.data = bytearray(open(filename, 'rb').read())
@@ -52,3 +53,35 @@ class BaseRom:
                 addr = info['end']
             else:
                 addr += 1
+
+    def word_align(self, addr):
+        return (addr + 3) & ~3
+
+    def insert_bytes(self, addr, raw):
+        end = addr + len(raw)
+        self.data[addr : end] = raw
+        return end
+
+    def asm(self, bytes_or_hexstring):
+        if self.asm_addr is None:
+            print("asm error: asm_addr is None", file=sys.stderr)
+            sys.exit(1)
+
+        if self.asm_addr & 3:
+            print(f"asm error: asm_addr ({self.asm_addr:06X}) is not word-aligned", file=sys.stderr)
+            sys.exit(1)
+
+        type_ = type(bytes_or_hexstring)
+        if type_ is bytes:
+            raw = bytes_or_hexstring
+        elif type_ is str:
+            raw = bytes.fromhex(bytes_or_hexstring)
+        else:
+            print("asm error: argument type must be either bytes or str", file=sys.stderr)
+            sys.exit(1)
+
+        if len(raw) != 4:
+            print("asm error: len(raw) != 4", file=sys.stderr)
+            sys.exit(1)
+
+        self.asm_addr = self.insert_bytes(self.asm_addr, raw)

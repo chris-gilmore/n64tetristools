@@ -38,7 +38,8 @@ def auto_int(x):
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-v', '--verbose', action='store_true', help='increase verbosity')
-    parser.add_argument('-s', '--showseed', action='store_true', help='modifies name from seed')
+    parser.add_argument('-s', '--saveseed', action='store_true', help='saves seed')
+    parser.add_argument('-d', '--displayseed', action='store_true', help='displays seed')
     parser.add_argument('SRC', help='source rom file')
     parser.add_argument('DEST', help='output rom file')
 
@@ -76,7 +77,7 @@ def main():
     group_screens.add_argument('--screens', nargs=2, metavar='#', type=int, help='(default: 0 7)')
 
     group_stat = parser.add_argument_group('stat', 'Modify stat properties.')
-    group_stat.add_argument('--stat', metavar='TYPE', type=int, help='1:PlayerName, 2:LineCount, 3:TimeRemaining')
+    group_stat.add_argument('--stat', metavar='TYPE', type=int, help='1:PlayerName, 2:LineCount, 3:TimeRemaining, 4:Seed')
     group_stat.add_argument('--xy', nargs=2, metavar='#', type=auto_int, help='position: X Y')
     group_stat.add_argument('--rgba', nargs=4, metavar='#', type=auto_int, help='color: R G B A')
 
@@ -90,6 +91,12 @@ def main():
 
     rom = TheNewTetrisRom(verbose=args.verbose)
     rom.from_file(args.SRC)
+
+    if args.displayseed:
+        rom.save_seed()
+        rom.display_seed()
+    elif args.saveseed:
+        rom.save_seed()
 
     if args.image is not None:
         if args.i is not None:
@@ -138,6 +145,11 @@ def main():
         rom.modify_screens(start, end)
 
     if args.stat is not None:
+        if args.stat == 4 and ((args.xy is not None) or (args.rgba is not None)):
+            if not args.displayseed:
+                if not args.saveseed:
+                    rom.save_seed()
+                rom.display_seed()
         if args.xy is not None:
             x, y = args.xy
             rom.modify_stat_position(args.stat, x, y)
@@ -150,9 +162,6 @@ def main():
 
     if args.sqsz is not None:
         rom.modify_square_size(args.sqsz)
-
-    if args.showseed:
-        rom.modify_name_from_seed()
 
     rom.to_file(args.DEST)
 

@@ -1,6 +1,6 @@
 
 ```
-usage: tnt-modify.py [-h] [-v] [-s] [--image FILE] [-i ADDR | -n NAME]
+usage: tnt-modify.py [-h] [-v] [-s] [-d] [--image FILE] [-i ADDR | -n NAME]
                      [--seed VALUE] [--bag # # #] [--sprint TIME]
                      [--ultra LINES] [--piece TYPE] [--dc # # #] [--sc # # #]
                      [--spawn JIFFIES] [--hold JIFFIES] [--lock JIFFIES]
@@ -10,25 +10,26 @@ usage: tnt-modify.py [-h] [-v] [-s] [--image FILE] [-i ADDR | -n NAME]
                      SRC DEST
 
 positional arguments:
-  SRC               source rom file
-  DEST              output rom file
+  SRC                source rom file
+  DEST               output rom file
 
 options:
-  -h, --help        show this help message and exit
-  -v, --verbose     increase verbosity
-  -s, --showseed    modifies name from seed
+  -h, --help         show this help message and exit
+  -v, --verbose      increase verbosity
+  -s, --saveseed     saves seed
+  -d, --displayseed  displays seed
 
 image:
   Insert image either by address or by name.
 
-  --image FILE      load image file
-  -i ADDR           address of image
-  -n NAME           name of image
+  --image FILE       load image file
+  -i ADDR            address of image
+  -n NAME            name of image
 
 seed:
   Hardcode RNG seed to a given 32-bit value, for example, 0x600D5EED.
 
-  --seed VALUE      RNG seed
+  --seed VALUE       RNG seed
 
 bag:
   A bag is defined by the following three numbers: {START} {END} {N}. Each
@@ -37,58 +38,58 @@ bag:
   than 63. The order of pieces is: 0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O.
   Example: "--bag 5 6 9" would produce only I pieces.
 
-  --bag # # #       (default: 0 7 9)
+  --bag # # #        (default: 0 7 9)
 
 sprint:
   Sprint goal time.
 
-  --sprint TIME     seconds (default: 180)
+  --sprint TIME      seconds (default: 180)
 
 ultra:
   Ultra goal lines.
 
-  --ultra LINES     lines (default: 150)
+  --ultra LINES      lines (default: 150)
 
 piece:
   Modify piece properties.
 
-  --piece TYPE      0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
-  --dc # # #        diffuse color: R G B
-  --sc # # #        specular color: R G B (default: 0xFF 0xFF 0xFF)
+  --piece TYPE       0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
+  --dc # # #         diffuse color: R G B
+  --sc # # #         specular color: R G B (default: 0xFF 0xFF 0xFF)
 
 delay:
   Delay timers for piece spawning, holding, locking, square forming, and
   line clearing containing gold or silver. One jiffy is a sixtieth of a
   second.
 
-  --spawn JIFFIES   (default: 20, minimum: 1)
-  --hold JIFFIES    (default: 16, minimum: 1)
-  --lock JIFFIES    (default: 20, minimum: 0)
-  --square JIFFIES  (default: 45, minimum: 0)
-  --line JIFFIES    (default: 24, minimum: 1)
+  --spawn JIFFIES    (default: 20, minimum: 1)
+  --hold JIFFIES     (default: 16, minimum: 1)
+  --lock JIFFIES     (default: 20, minimum: 0)
+  --square JIFFIES   (default: 45, minimum: 0)
+  --line JIFFIES     (default: 24, minimum: 1)
 
 screens:
   Subrange of screens to play. For example, --screens 2 5 would allow only
   screens Egypt, Celtic, Africa, and Japan. Play only Finale: --screens 7 7
 
-  --screens # #     (default: 0 7)
+  --screens # #      (default: 0 7)
 
 stat:
   Modify stat properties.
 
-  --stat TYPE       1:PlayerName, 2:LineCount, 3:TimeRemaining
-  --xy # #          position: X Y
-  --rgba # # # #    color: R G B A
+  --stat TYPE        1:PlayerName, 2:LineCount, 3:TimeRemaining, 4:Seed
+  --xy # #           position: X Y
+  --rgba # # # #     color: R G B A
 
 ihp:
   Set initial hold piece.
 
-  --ihp TYPE        0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
+  --ihp TYPE         0:L, 1:J, 2:Z, 3:S, 4:T, 5:I, 6:O
 
 sqsz:
   Square size.
 
-  --sqsz {2,4,6,8}  (default: 4)
+  --sqsz {2,4,6,8}   (default: 4)
 ```
 
 ```
