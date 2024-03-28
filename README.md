@@ -159,4 +159,12 @@ sqsz:
 
     # Totally uncapped and unlocked
     $ ./tnt-modify.py -v ~/tnt.z64 mod.z64 --spawn 1 --hold 1 --lock 10 --square 0 --line 1 --screens 0 7
+
+--
+
+    -s : saves seed value in memory and scrolls seed value in OPTIONS->VALUES (formerly known as OPTIONS->CREDITS).
+
+    -d : auto-enables -s and displays seed value in-game.
+
+    --stat 4 --xy # # --rgba # # # # : auto-enables -d and -s and allows modder to re-position and re-color seed value in-game.
 ```
