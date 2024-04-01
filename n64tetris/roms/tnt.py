@@ -289,16 +289,18 @@ class TheNewTetrisRom(BaseRom):
             sys.exit(1)
 
     def modify_seed(self, value):
-        addr1 = 0x037688
-        addr2 = 0x037690
+        addr1 = 0x018624
+        addr2 = 0x018650
+        addr3 = 0x018658
 
         value &= 0xFFFFFFFF
         seed = value.to_bytes(4, byteorder='big')
 
-        self.data[addr1 : addr1 + 2] = b'\x3C\x0F'   # lui $t7, ...
-        self.data[addr1 + 2 : addr1 + 4] = seed[0:2]
-        self.data[addr2 : addr2 + 2] = b'\x35\xEF'   # ori $t7, $t7, ...
-        self.data[addr2 + 2 : addr2 + 4] = seed[2:4]
+        self.insert_bytes(addr1, b'\x3C\x11' + seed[0 : 2])  # lui     $s1, ...
+        self.insert_bytes(addr2, b'\x36\x31' + seed[2 : 4])  # ori     $s1, $s1, ...
+
+        self.asm_addr = addr3
+        self.asm('AFB10054')  # sw      $s1, 0x54($sp)
 
     def modify_bag(self, start, end, n):
         if start < 0:
@@ -655,7 +657,7 @@ class TheNewTetrisRom(BaseRom):
     def save_seed(self):
         addr1 = 0x0A4420
         addr2 = 0x099480
-        addr3 = 0x0376AC
+        addr3 = 0x0187BC
         menu = 0x0A69A4
 
         """
@@ -676,64 +678,62 @@ class TheNewTetrisRom(BaseRom):
           800DB384
         """
 
-        self.data[menu : menu + 7] = b'VALUES\x00'
+        self.insert_bytes(menu, b'VALUES\x00')
 
-        self.data[addr1 : addr1 + 15] = b'\x0ASEED\x0A        \x0A'  # allocate space for seed value (8 chars)
-        val_addr = addr1 + 15
-        val_addr = (val_addr - 1) - 8  # start position of value
-        self.data[addr2 : addr2 + 3] = b'\x01\x01\x00'  # font size: big, big, small
+        # allocate space for seed value (8 chars)
+        addr1_ = self.insert_bytes(addr1, b'\x0ASEED\x0A        \x0A')
+        after_val_addr = addr1_ - 1
+        # font size: big, big, small
+        addr2_ = self.insert_bytes(addr2, b'\x01\x01\x00')
 
-        self.data[addr1 + 15 : addr1 + 17] = b'\x0A\x00'
-        self.data[addr2 + 3 : addr2 + 4] = b'\x01'  # font size: big
+        # end text
+        addr1_ = self.insert_bytes(addr1_, b'\x0A\x00')
+        # font size: big
+        self.insert_bytes(addr2_, b'\x01')
 
-        addr4 = self.word_align(addr1 + 17)
-        jmp_addr = addr4 + 0x039D80
-        jmp_addr = jmp_addr >> 2
-        jmp_opc = 0b000010
-        jmp_inst = (jmp_opc << 26) | jmp_addr
-        jmp_inst = jmp_inst.to_bytes(4, byteorder='big')
+        addr4 = self.word_align(addr1_)
+        jal_inst = self.jal(self.virt(addr4))
 
         # Jump out
-        self.data[addr3 : addr3 + 4] = jmp_inst                   # j ...
+        self.asm_addr = addr3
+        self.asm('8FA40054')  # lw      $a0, 0x54($sp)
+        self.asm(jal_inst)    # jal     ...
+        self.asm('00000000')  # nop
 
-        # Copy $t7 (seed) into $t6
-        self.data[addr4 : addr4 + 4] = b'\x01\xE0\x70\x25'        # move $t6, $t7
-
-        # $t1 is position after val_addr in ram
-        after_val_addr = val_addr + 8
-        after_val_addr = after_val_addr + 0x80039D80
-        after_val_addr_hi = after_val_addr >> 16
-        after_val_addr_lo = after_val_addr & 0xFFFF
-        after_val_addr_hi = after_val_addr_hi.to_bytes(2, byteorder='big')
-        after_val_addr_lo = after_val_addr_lo.to_bytes(2, byteorder='big')
-        self.data[addr4 + 4 : addr4 + 6] = b'\x3C\x09'            # lui $t1, ...
-        self.data[addr4 + 6 : addr4 + 8] = after_val_addr_hi
-        self.data[addr4 + 8 : addr4 + 10] = b'\x35\x29'           # ori $t1, $t1, ...
-        self.data[addr4 + 10 : addr4 + 12] = after_val_addr_lo
-
-        # $t2 is "0123456789ABCDEF"
-        self.data[addr4 + 12 : addr4 + 16] = b'\x3C\x0A\x80\x0D'  # lui $t2, 0x800D
-        self.data[addr4 + 16 : addr4 + 20] = b'\x35\x4A\xB3\x84'  # ori $t2, $t2, 0xB384
-
-        self.data[addr4 + 20 : addr4 + 24] = b'\x24\x0C\x00\x08'  # addiu $t4, $zero, 0x8
-        # $t6 is seed
-        self.data[addr4 + 24 : addr4 + 28] = b'\x31\xC8\x00\x0F'  # andi $t0, $t6, 0xF
-        self.data[addr4 + 28 : addr4 + 32] = b'\x01\x0A\x58\x21'  # addu $t3, $t0, $t2
-        self.data[addr4 + 32 : addr4 + 36] = b'\x91\x68\x00\x00'  # lbu $t0, ($t3)
-        self.data[addr4 + 36 : addr4 + 40] = b'\x00\x0E\x71\x02'  # srl $t6, $t6, 4
-        self.data[addr4 + 40 : addr4 + 44] = b'\x25\x29\xFF\xFF'  # addiu $t1, $t1, -1
-        self.data[addr4 + 44 : addr4 + 48] = b'\x25\x8C\xFF\xFF'  # addiu $t4, $t4, -1
-        self.data[addr4 + 48 : addr4 + 52] = b'\x1D\x80\xFF\xF9'  # bgtz $t4, 0xFFF9
-        self.data[addr4 + 52 : addr4 + 56] = b'\xA1\x28\x00\x00'  # sb $t0, ($t1)
+        self.asm_addr = addr4
 
         # Store seed into 0x800DE90C
-        self.data[addr4 + 56 : addr4 + 60] = b'\x3C\x0D\x80\x0D'  # lui $t5, 0x800D
-        self.data[addr4 + 60 : addr4 + 64] = b'\x35\xAD\xE9\x0C'  # ori $t5, $t5, 0xE90C
-        self.data[addr4 + 64 : addr4 + 68] = b'\xAD\xAF\x00\x00'  # sw $t7, ($t5)
+        self.asm('3C0D800D')  # lui     $t5, 0x800D
+        self.asm('35ADE90C')  # ori     $t5, $t5, 0xE90C
+        self.asm('ADA40000')  # sw      $a0, ($t5)
+
+        # Copy $a0 (seed) into $t6
+        self.asm('00807025')  # or      $t6, $a0, $zero
+
+        # $t1 is position after val in ram
+        vaddr_bytes = self.virt(after_val_addr).to_bytes(4, byteorder='big')
+        self.asm(b'\x3C\x09' + vaddr_bytes[0 : 2])  # lui     $t1, ...
+        self.asm(b'\x35\x29' + vaddr_bytes[2 : 4])  # ori     $t1, $t1, ...
+
+        # $t2 is "0123456789ABCDEF"
+        self.asm('3C0A800D')  # lui     $t2, 0x800D
+        self.asm('354AB384')  # ori     $t2, $t2, 0xB384
+
+        self.asm('240C0008')  # addiu   $t4, $zero, 0x8
+        # $t6 is seed
+        self.asm('31C8000F')  # andi    $t0, $t6, 0xF
+        self.asm('010A5821')  # addu    $t3, $t0, $t2
+        self.asm('91680000')  # lbu     $t0, ($t3)
+        self.asm('000E7102')  # srl     $t6, $t6, 4
+        self.asm('2529FFFF')  # addiu   $t1, $t1, -1
+        self.asm('258CFFFF')  # addiu   $t4, $t4, -1
+        self.asm('1D80FFF9')  # bgtz    $t4, 0xFFF9
+        self.asm('A1280000')  # sb      $t0, ($t1)
 
         # Jump back in
-        self.data[addr4 + 68 : addr4 + 72] = b'\x08\x01\xC5\x0D'  # j 0x071434
-        self.data[addr4 + 72 : addr4 + 76] = b'\x00\x00\x00\x00'  # nop
+        self.asm('03E00008')  # jr      $ra
+        self.asm('00000000')  # nop
+        # print(f"{self.asm_addr:08X}")  # this will be display_seed's addr2
 
         # "%08X" is stored at 0x800DE907
         addr5 = 0x0A4B87
@@ -741,13 +741,9 @@ class TheNewTetrisRom(BaseRom):
 
     def display_seed(self):
         addr1 = 0x0182D8
-        addr2 = 0x0A4480
+        addr2 = 0x0A4480  # TODO: this should not be static
 
-        jal_addr = addr2 + 0x039D80
-        jal_addr = jal_addr >> 2
-        jal_opc = 0b000011
-        jal_inst = (jal_opc << 26) | jal_addr
-        jal_inst = jal_inst.to_bytes(4, byteorder='big')
+        jal_inst = self.jal(self.virt(addr2))
 
         self.asm_addr = addr1
         self.asm(jal_inst)    # jal     func_800DE200

@@ -18,6 +18,10 @@ class BaseRom:
 
     def from_file(self, filename):
         self.data = bytearray(open(filename, 'rb').read())
+        self.boot_address = int.from_bytes(self.data[8 : 12], byteorder='big')
+
+    def virt(self, addr):
+        return addr + self.boot_address - 0x1000
 
     def to_file(self, filename):
         utils.sm64_update_checksums(self.data)
@@ -85,3 +89,9 @@ class BaseRom:
             sys.exit(1)
 
         self.asm_addr = self.insert_bytes(self.asm_addr, raw)
+
+    def jal(self, vaddr):
+        opcode = 0b000011
+        target = (vaddr - 0x80000000) >> 2
+        instruction = (opcode << 26) | target
+        return instruction.to_bytes(4, byteorder='big')

@@ -92,6 +92,9 @@ def main():
     rom = TheNewTetrisRom(verbose=args.verbose)
     rom.from_file(args.SRC)
 
+    if args.seed is not None:
+        rom.modify_seed(args.seed)
+
     if args.displayseed:
         rom.save_seed()
         rom.display_seed()
@@ -103,9 +106,6 @@ def main():
             rom.insert_image(args.image, args.i)
         elif args.n is not None:
             rom.insert_by_name(args.image, args.n)
-
-    if args.seed is not None:
-        rom.modify_seed(args.seed)
 
     if args.bag is not None:
         start, end, n = args.bag
