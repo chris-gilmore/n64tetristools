@@ -10,14 +10,23 @@ class AssetFormat(Enum):
     UNKNOWN = auto()
 
 class BaseRom:
-    def __init__(self, verbose=False):
+    def __init__(self, game_code=None, verbose=False, force=False):
+        self.game_code = game_code
         self.verbose = verbose
+        self.force = force
         self.decoders = ()
         self.data = bytearray()
         self.asm_addr = None
 
     def from_file(self, filename):
         self.data = bytearray(open(filename, 'rb').read())
+        game_code = bytes(self.data[59 : 63])
+        if self.game_code is not None and (game_code != self.game_code):
+            if self.force:
+                print(f"rom warning: game_code ({game_code}) is not {self.game_code}", file=sys.stderr)
+            else:
+                print(f"rom error: game_code ({game_code}) should be {self.game_code}", file=sys.stderr)
+                sys.exit(1)
         self.boot_address = int.from_bytes(self.data[8 : 12], byteorder='big')
 
     def virt(self, addr):

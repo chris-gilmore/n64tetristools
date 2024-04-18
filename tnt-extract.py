@@ -32,6 +32,7 @@ def auto_int(x):
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-v', '--verbose', action='store_true', help='increase verbosity')
+    parser.add_argument('-f', '--force', action='store_true', help='bypass safety checks')
     parser.add_argument('SRC', help='source rom file')
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('-i', metavar='ADDR', type=auto_int, help='address of image')
@@ -40,7 +41,7 @@ def main():
 
     args = parser.parse_args()
 
-    rom = TheNewTetrisRom(verbose=args.verbose)
+    rom = TheNewTetrisRom(verbose=args.verbose, force=args.force)
     rom.from_file(args.SRC)
 
     if args.i:

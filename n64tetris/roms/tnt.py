@@ -21,9 +21,10 @@ class AssetFormat(Enum):
     COLOR_INDEX = auto()
 
 class TheNewTetrisRom(BaseRom):
-    def __init__(self, verbose=False):
-        super().__init__(verbose=verbose)
+    def __init__(self, verbose=False, force=False):
+        super().__init__(game_code=b'NRIE', verbose=verbose, force=force)
         self.decoders = (self.h2o_decode,)
+        self.next_sub_addr = 0x0F5A50  # 8012F7D0 (original start of heap)
 
     def h2os_decompress(self, addr, buflen):
         import lzo
@@ -289,6 +290,10 @@ class TheNewTetrisRom(BaseRom):
             sys.exit(1)
 
     def modify_seed(self, value):
+        """
+        In FUN_80052114, replace:
+            local_1c = extraout_v1;
+        """
         addr1 = 0x018624
         addr2 = 0x018650
         addr3 = 0x018658
@@ -654,28 +659,16 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr24 : addr24 + 1] = bytes([(10 - value) * 4])
         self.data[addr25 : addr25 + 1] = bytes([value * value])
 
-    def save_seed(self):
+    def old_save_seed(self):
         addr1 = 0x0A4420
         addr2 = 0x099480
         addr3 = 0x0187BC
         menu = 0x0A69A4
 
         """
-        Jump back in:
-          0376AC + 8
-          0376B4
-          0376B4 + 039D80
-          071434
-          071434 / 4
-          01C50D
-
         000a15f0  30 31 32 33 34 35 36 37  38 39 61 62 63 64 65 66  |0123456789abcdef|
         000a1600  00 00 00 00 30 31 32 33  34 35 36 37 38 39 41 42  |....0123456789AB|
         000a1610  43 44 45 46 00 00 00 00  00 00 00 00 00 00 00 00  |CDEF............|
-
-        Convert from rom address to game address:
-          A1604 + 80039D80
-          800DB384
         """
 
         self.insert_bytes(menu, b'VALUES\x00')
@@ -691,7 +684,8 @@ class TheNewTetrisRom(BaseRom):
         # font size: big
         self.insert_bytes(addr2_, b'\x01')
 
-        addr4 = self.word_align(addr1_)
+        #addr4 = self.word_align(addr1_)
+        addr4 = self.next_sub_addr
         jal_inst = self.jal(self.virt(addr4))
 
         # Jump out
@@ -702,9 +696,9 @@ class TheNewTetrisRom(BaseRom):
 
         self.asm_addr = addr4
 
-        # Store seed into 0x800DE90C
-        self.asm('3C0D800D')  # lui     $t5, 0x800D
-        self.asm('35ADE90C')  # ori     $t5, $t5, 0xE90C
+        # Store seed into 0x8013AD7C
+        self.asm('3C0D8013')  # lui     $t5, 0x8013
+        self.asm('35ADAD7C')  # ori     $t5, $t5, 0xAD7C
         self.asm('ADA40000')  # sw      $a0, ($t5)
 
         # Copy $a0 (seed) into $t6
@@ -727,76 +721,701 @@ class TheNewTetrisRom(BaseRom):
         self.asm('000E7102')  # srl     $t6, $t6, 4
         self.asm('2529FFFF')  # addiu   $t1, $t1, -1
         self.asm('258CFFFF')  # addiu   $t4, $t4, -1
-        self.asm('1D80FFF9')  # bgtz    $t4, 0xFFF9
+        self.asm('1D80FFF9')  # bgtz    $t4, -0x1C
         self.asm('A1280000')  # sb      $t0, ($t1)
 
         # Jump back in
         self.asm('03E00008')  # jr      $ra
         self.asm('00000000')  # nop
-        # print(f"{self.asm_addr:08X}")  # this will be display_seed's addr2
+        print(f"{self.asm_addr:08X}")
+        self.next_sub_addr = self.asm_addr
 
-        # "%08X" is stored at 0x800DE907
-        addr5 = 0x0A4B87
+        addr5 = 0x100FF7  # 8013AD77
         self.insert_bytes(addr5, b'%08X\x00')
 
+    def move_heap(self):
+        """
+        Make room for new code.
+        Note that 1 MB from 0x1000 of the rom is loaded into ram (ie, 0x1000 to 0x101000).
+        Move start of heap to 0x8013AD80 (rom equivalent: 0x101000).
+        Original start of heap is 0x8012F7D0.
+        This gives us 0x8013AD80 - 0x8012F7D0 = 46512 bytes to add new code and static data.
+        """
+        self.asm_addr = 0x0106C4
+        self.asm('3C088013')  # lui     $t0, 0x8013
+        self.asm_addr = 0x0106D0
+        self.asm('3508AD80')  # ori     $t0, $t0, 0xAD80
+
+        # Unused code
+        #self.asm_addr = 0x00FDA8
+        #self.asm('3C0F8013')  # lui     $t7, 0x8013
+        #self.asm('35EFAD80')  # ori     $t7, $t7, 0xAD80
+
+    def init_static_data(self):
+        # reserves space for seed
+        addr = 0x100FFC  # 8013AD7C
+        self.insert_bytes(addr, b'\x00' * 4)
+
+        addr = 0x100FF7  # 8013AD77
+        self.insert_bytes(addr, b'%08X\x00')
+
+        addr = 0x100FF1  # 8013AD71
+        self.insert_bytes(addr, b'%c %c\x00')
+
+        addr = 0x100FDC  # 8013AD5C
+        self.insert_bytes(addr, b'%d %d %d %d %d %d %d\x00')
+
+        # x,y - piece_count, 2p, p2
+        addr = 0x100FD8  # 8013AD58
+        self.insert_bytes(addr, b'\x00\xA9\x00\xF7')
+
+        # x,y - piece_count, 2p, p1
+        addr = 0x100FD4  # 8013AD54
+        self.insert_bytes(addr, b'\x00\xA9\x00\xA8')
+
+        # x,y - piece_count, 1p, p1
+        addr = 0x100FD0  # 8013AD50
+        self.insert_bytes(addr, b'\x01\x27\x00\x9B')
+
+        # x,y - remaining_pieces, 2p, p2
+        addr = 0x100FCC  # 8013AD4C
+        self.insert_bytes(addr, b'\x00\xFC\x00\xFC')
+
+        # x,y - remaining_pieces, 2p, p1
+        addr = 0x100FC8  # 8013AD48
+        self.insert_bytes(addr, b'\x00\x3B\x00\xFC')
+
+        # x,y - remaining_pieces, 1p, p1
+        addr = 0x100FC4  # 8013AD44
+        self.insert_bytes(addr, b'\x00\x5B\x01\x0A')
+
+        # x,y - extra_lookahead, 2p, p2
+        addr = 0x100FC0  # 8013AD40
+        self.insert_bytes(addr, b'\x00\xD2\x00\x90')
+
+        # x,y - extra_lookahead, 2p, p1
+        addr = 0x100FBC  # 8013AD3C
+        self.insert_bytes(addr, b'\x00\xAC\x00\x90')
+
+        # x,y - extra_lookahead, 1p, p1
+        addr = 0x100FB8  # 8013AD38
+        self.insert_bytes(addr, b'\x00\xD0\x00\x90')
+
+        # initializes linked list and reserves space for head item
+        # register_piece_count() places its item here
+        addr = 0x100FA4  # 8013AD24
+        self.insert_bytes(addr, b'\x00' * 20)
+
+        # register_remaining_pieces() places its item here
+        addr = 0x100F90  # 8013AD10
+        self.insert_bytes(addr, b'\x00' * 20)
+
+        # register_extra_lookahead() places its item here
+        addr = 0x100F7C  # 8013ACFC
+        self.insert_bytes(addr, b'\x00' * 20)
+
+    def save_seed(self):
+        """
+        In FUN_80052114, replace:
+            FUN_80041260();
+        """
+        addr = self.next_sub_addr
+        jal_inst = self.jal(self.virt(addr))
+        self.asm_addr = 0x0187AC
+        self.asm(jal_inst)    # jal     ...
+        self.asm('8fa40054')  # lw      $a0, 0x54($sp)          ; seed
+
+        self.asm_addr = addr
+        self.asm('27bdffe8')  # addiu   $sp, $sp, -0x18
+        self.asm('afa40018')  # sw      $a0, 0x18($sp)          ; seed
+        self.asm('afbf0014')  # sw      $ra, 0x14($sp)
+
+        self.asm('8fa80018')  # lw      $t0, 0x18($sp)          ; seed
+        self.asm('3c098013')  # lui     $t1, 0x8013
+        self.asm('3529ad7c')  # ori     $t1, $t1, 0xAD7C
+        self.asm('ad280000')  # sw      $t0, ($t1)              ; store seed into 8013AD7C
+
+        """
+        FUN_80041260();
+        /* 0187AC 8005252C 0C010498 */  jal   func_80041260
+        /* 0187B0 80052530 00000000 */  nop
+        """
+        self.asm('0c010498')  # jal     func_80041260
+        self.asm('00000000')  # nop
+
+        self.asm('8fbf0014')  # lw      $ra, 0x14($sp)
+        self.asm('03e00008')  # jr      $ra
+        self.asm('27bd0018')  # addiu   $sp, $sp, 0x18
+        self.next_sub_addr = self.asm_addr
+
     def display_seed(self):
-        addr1 = 0x0182D8
-        addr2 = 0x0A4480  # TODO: this should not be static
+        """
+        In FUN_80051F30, replace:
+            FUN_80072A84();
+        """
+        addr = self.next_sub_addr
+        jal_inst = self.jal(self.virt(addr))
+        self.asm_addr = 0x01821C
+        self.asm(jal_inst)    # jal     ...
 
-        jal_inst = self.jal(self.virt(addr2))
+        self.asm_addr = addr
+        self.asm('27bdffc8')  # addiu   $sp, $sp, -0x38
+        self.asm('afb00034')  # sw      $s0, 0x34($sp)
+        self.asm('afbf0030')  # sw      $ra, 0x30($sp)
 
-        self.asm_addr = addr1
-        self.asm(jal_inst)    # jal     func_800DE200
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
-        self.asm('00000000')  # nop
+        """
+        FUN_80072A84();
+        /* 01821C 80051F9C 0C01CAA1 */  jal   func_80072A84
+        """
+        self.asm('0c01caa1')  # jal     func_80072A84
         self.asm('00000000')  # nop
 
-        self.asm_addr = addr2
-        self.asm('27BDFFC8')  # addiu   $sp, $sp, -0x38
-        self.asm('AFBF0024')  # sw      $ra, 0x24($sp)
-        self.asm('3C08800D')  # lui     $t0, 0x800D
-        self.asm('3508E90C')  # ori     $t0, $t0, 0xE90C
-        self.asm('8D060000')  # lw      $a2, ($t0)              ; seed
-        self.asm('3C05800D')  # lui     $a1, 0x800D
-        self.asm('34A5E907')  # ori     $a1, $a1, 0xE907        ; "%08X"
-        self.asm('0C02D8B5')  # jal     func_800B62D4           ; sprintf()
-        self.asm('27A40028')  # addiu   $a0, $sp, 0x28          ; stringSeed
-        self.asm('3C04800E')  # lui     $a0, 0x800E
-        self.asm('0C016EFF')  # jal     func_8005BBFC
-        self.asm('348420C0')  # ori     $a0, $a0, 0x20C0
-        self.asm('3C058011')  # lui     $a1, 0x8011
-        self.asm('27AB0028')  # addiu   $t3, $sp, 0x28          ; stringSeed
-        self.asm('3C04800E')  # lui     $a0, 0x800E
-        self.asm('241800FF')  # addiu   $t8, $zero, 0xFF        ; red
-        self.seed_red_addr = self.asm_addr - 1
-        self.asm('240F00FF')  # addiu   $t7, $zero, 0xFF        ; green
-        self.seed_green_addr = self.asm_addr - 1
-        self.asm('241900FF')  # addiu   $t9, $zero, 0xFF        ; blue
-        self.seed_blue_addr = self.asm_addr - 1
-        self.asm('240E00FF')  # addiu   $t6, $zero, 0xFF        ; alpha
-        self.seed_alpha_addr = self.asm_addr - 1
-        self.asm('AFAE0020')  # sw      $t6, 0x20($sp)
-        self.asm('AFB9001C')  # sw      $t9, 0x1C($sp)
-        self.asm('AFAF0018')  # sw      $t7, 0x18($sp)
-        self.asm('AFB80014')  # sw      $t8, 0x14($sp)
-        self.asm('348420C0')  # ori     $a0, $a0, 0x20C0
-        self.asm('AFAB0010')  # sw      $t3, 0x10($sp)
-        self.asm('24060006')  # addiu   $a2, $zero, 0x6         ; x position
+        self.asm('3c088013')  # lui     $t0, 0x8013
+        self.asm('3508ad7c')  # ori     $t0, $t0, 0xAD7C
+        self.asm('8d060000')  # lw      $a2, ($t0)              ; seed
+        self.asm('3c058013')  # lui     $a1, 0x8013
+        self.asm('34a5ad77')  # ori     $a1, $a1, 0xAD77        ; "%08X"
+        self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
+        self.asm('27a40024')  # addiu   $a0, $sp, 0x24          ; s_seed
+
+        self.asm('3c10800e')  # lui     $s0, 0x800E
+        self.asm('361020c0')  # ori     $s0, $s0, 0x20C0        ; ?
+        self.asm('0c016eff')  # jal     func_8005BBFC           ; open_display?
+        self.asm('02002025')  # or      $a0, $s0, $zero         ; copy $s0 to $a0
+
+        self.asm('24060006')  # addiu   $a2, $zero, 0x6         ; x position for seed
         self.seed_xpos_addr = self.asm_addr - 2
-        self.asm('2407011A')  # addiu   $a3, $zero, 0x11A       ; y position
+        self.asm('2407011a')  # addiu   $a3, $zero, 0x11A       ; y position for seed
         self.seed_ypos_addr = self.asm_addr - 2
-        self.asm('0C01DE58')  # jal     func_80077960
-        self.asm('34A50A08')  # ori     $a1, $a1, 0xA08
-        self.asm('3C04800E')  # lui     $a0, 0x800E
-        self.asm('0C016F90')  # jal     func_8005BE40
-        self.asm('348420C0')  # ori     $a0, $a0, 0x20C0
-        self.asm('8FBF0024')  # lw      $ra, 0x24($sp)
-        self.asm('27BD0038')  # addiu   $sp, $sp, 0x38
-        self.asm('03E00008')  # jr      $ra
+        self.asm('27a80024')  # addiu   $t0, $sp, 0x24          ; s_seed
+        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
+        self.seed_red_addr = self.asm_addr - 1
+        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
+        self.seed_green_addr = self.asm_addr - 1
+        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
+        self.seed_blue_addr = self.asm_addr - 1
+        self.asm('240c009f')  # addiu   $t4, $zero, 0x9F        ; alpha
+        self.seed_alpha_addr = self.asm_addr - 1
+        self.asm('afac0020')  # sw      $t4, 0x20($sp)
+        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
+        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
+        self.asm('afa90014')  # sw      $t1, 0x14($sp)
+        self.asm('afa80010')  # sw      $t0, 0x10($sp)
+        self.asm('3c058011')  # lui     $a1, 0x8011
+        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
+        self.asm('0c01de58')  # jal     func_80077960           ; display_text
+        self.asm('02002025')  # or      $a0, $s0, $zero         ; copy $s0 to $a0
+
+        self.asm('0c016f90')  # jal     func_8005BE40           ; close_display?
+        self.asm('02002025')  # or      $a0, $s0, $zero         ; copy $s0 to $a0
+
+        self.asm('8fbf0030')  # lw      $ra, 0x30($sp)
+        self.asm('8fb00034')  # lw      $s0, 0x34($sp)
+        self.asm('03e00008')  # jr      $ra
+        self.asm('27bd0038')  # addiu   $sp, $sp, 0x38
+        self.next_sub_addr = self.asm_addr
+
+    def heap_alloc_player_data(self):
+        """
+        Allocate extra heap space for per-player data.  Increase by 24 bytes.
+
+        In FUN_80052114, change 0x6848 to 0x6860
+            FUN_8007E03C(0x6848);
+
+        /* 0186E8 80052468 0C01F80F */  jal   func_8007E03C
+        /* 0186EC 8005246C 24046848 */  addiu $a0, $zero, 0x6848
+        """
+        self.insert_bytes(0x0186EE, b'\x68\x60')
+
+    def init_player_stats(self):
+        """
+        In FUN_800547F0, replace:
+            FUN_800713F0(param_1 + 0x6690, &local_4);
+        """
+        addr = self.next_sub_addr
+        jal_inst = self.jal(self.virt(addr))
+        self.asm_addr = 0x01AACC
+        self.asm(jal_inst)    # jal     ...
+
+        self.asm_addr = addr
+        self.asm('27BDFFE0')  # addiu   $sp, $sp, -0x20
+        self.asm('AFBF001C')  # sw      $ra, 0x1C($sp)
+        self.asm('AFA40020')  # sw      $a0, 0x20($sp)          ; player_data + 0x6690
+        self.asm('AFA50024')  # sw      $a1, 0x24($sp)
+        self.asm('AFB00018')  # sw      $s0, 0x18($sp)
+
+        self.asm('8FA80020')  # lw      $t0, 0x20($sp)
+        self.asm('250801B8')  # addiu   $t0, $t0, 0x1B8
+        self.asm('AFA80014')  # sw      $t0, 0x14($sp)          ; player_data + 0x6848
+
+        self.asm('3C098011')  # lui     $t1, 0x8011
+        self.asm('3529EF20')  # ori     $t1, $t1, 0xEF20
+        self.asm('912A0000')  # lbu     $t2, ($t1)              ; num_players
+        self.asm('2D4B0003')  # sltiu   $t3, $t2, 0x3
+        self.asm('15600002')  # bne     $t3, $zero, 0x8         ; branch if num_players < 3
+        self.asm('254AFFFF')  # addiu   $t2, $t2, -1
+        self.asm('240A0003')  # addiu   $t2, $zero, 0x3
+
+        # branch target for "num_players < 3"
+        self.asm('3C098011')  # lui     $t1, 0x8011
+        self.asm('3529EF21')  # ori     $t1, $t1, 0xEF21
+        self.asm('912B0000')  # lbu     $t3, ($t1)              ; cur_player
+        self.asm('016A5821')  # addu    $t3, $t3, $t2
+        self.asm('000B5880')  # sll     $t3, $t3, 0x2
+        self.asm('AFAB0010')  # sw      $t3, 0x10($sp)          ; np_cp
+
+        # traverse linked list
+        self.asm('3C088013')  # lui     $t0, 0x8013
+        self.asm('3508AD24')  # ori     $t0, $t0, 0xAD24        ; head of linked list
+
+        # branch target for "next_item != 0"
+        self.asm('8d090008')  # lw      $t1, 0x8($t0)           ; item_init_func
+        self.asm('11200007')  # beq     $t1, $zero, 0x1C        ; branch if item_init_func == 0
+        self.asm('8d100000')  # lw      $s0, ($t0)              ; next_item
+        self.asm('8d0a0004')  # lw      $t2, 0x4($t0)           ; item_flags
+        self.asm('11400004')  # beq     $t2, $zero, 0x10        ; branch if item_flags == 0
         self.asm('00000000')  # nop
+        self.asm('8fa50010')  # lw      $a1, 0x10($sp)          ; np_cp
+        self.asm('0120f809')  # jalr    $t1                     ; call item_init_func
+        self.asm('8fa40014')  # lw      $a0, 0x14($sp)          ; player_data + 0x6848
+
+        # branch target for "item_init_func == 0" OR "item_flags == 0"
+        self.asm('1600fff6')  # bne     $s0, $zero, -0x28       ; branch if next_item != 0
+        self.asm('02004025')  # or      $t0, $s0, $zero         ; copy $s0 to $t0
+
+        """
+        FUN_800713F0(param_1 + 0x6690, &local_4);
+        /* 01AACC 8005484C 0C01C4FC */  jal   func_800713F0
+        """
+        self.asm('8FA50024')  # lw      $a1, 0x24($sp)
+        self.asm('0C01C4FC')  # jal     func_800713F0
+        self.asm('8FA40020')  # lw      $a0, 0x20($sp)
+
+        self.asm('8FBF001C')  # lw      $ra, 0x1C($sp)
+        self.asm('8FB00018')  # lw      $s0, 0x18($sp)
+        self.asm('03E00008')  # jr      $ra
+        self.asm('27BD0020')  # addiu   $sp, $sp, 0x20
+        self.next_sub_addr = self.asm_addr
+
+    def update_player_stats(self):
+        """
+        In FUN_80071394, replace:
+            FUN_80071238(param_1);
+        """
+        addr = self.next_sub_addr
+        jal_inst = self.jal(self.virt(addr))
+        self.asm_addr = 0x037624
+        self.asm(jal_inst)    # jal     ...
+
+        self.asm_addr = addr
+        self.asm('27BDFFE0')  # addiu   $sp, $sp, -0x20
+        self.asm('AFBF001C')  # sw      $ra, 0x1C($sp)
+        self.asm('AFA40020')  # sw      $a0, 0x20($sp)          ; player_data + 0x6690
+        self.asm('AFB00018')  # sw      $s0, 0x18($sp)
+
+        self.asm('8FA80020')  # lw      $t0, 0x20($sp)
+        self.asm('250801B8')  # addiu   $t0, $t0, 0x1B8
+        self.asm('AFA80014')  # sw      $t0, 0x14($sp)          ; player_data + 0x6848
+
+        # traverse linked list
+        self.asm('3C088013')  # lui     $t0, 0x8013
+        self.asm('3508AD24')  # ori     $t0, $t0, 0xAD24        ; head of linked list
+
+        # branch target for "next_item != 0"
+        self.asm('8d09000c')  # lw      $t1, 0xC($t0)           ; item_update_func
+        self.asm('11200006')  # beq     $t1, $zero, 0x18        ; branch if item_update_func == 0
+        self.asm('8d100000')  # lw      $s0, ($t0)              ; next_item
+        self.asm('8d0a0004')  # lw      $t2, 0x4($t0)           ; item_flags
+        self.asm('11400003')  # beq     $t2, $zero, 0xC         ; branch if item_flags == 0
+        self.asm('00000000')  # nop
+        self.asm('0120f809')  # jalr    $t1                     ; call item_update_func
+        self.asm('8fa40014')  # lw      $a0, 0x14($sp)          ; player_data + 0x6848
+
+        # branch target for "item_update_func == 0" OR "item_flags == 0"
+        self.asm('1600fff7')  # bne     $s0, $zero, -0x24       ; branch if next_item != 0
+        self.asm('02004025')  # or      $t0, $s0, $zero         ; copy $s0 to $t0
+
+        """
+        FUN_80071238(param_1);
+        /* 037624 800713A4 0C01C48E */  jal   func_80071238
+        """
+        self.asm('0C01C48E')  # jal     func_80071238
+        self.asm('8FA40020')  # lw      $a0, 0x20($sp)
+
+        self.asm('8FBF001C')  # lw      $ra, 0x1C($sp)
+        self.asm('8FB00018')  # lw      $s0, 0x18($sp)
+        self.asm('03E00008')  # jr      $ra
+        self.asm('27BD0020')  # addiu   $sp, $sp, 0x20
+        self.next_sub_addr = self.asm_addr
+
+    def display_player_stats(self):
+        """
+        In FUN_8005447C, replace:
+            FUN_80052A00(param_1 + 0x6808);
+        """
+        addr = self.next_sub_addr
+        jal_inst = self.jal(self.virt(addr))
+        self.asm_addr = 0x01A79C
+        self.asm(jal_inst)    # jal     ...
+
+        self.asm_addr = addr
+        self.asm('27BDFFE0')  # addiu   $sp, $sp, -0x20
+        self.asm('AFBF001C')  # sw      $ra, 0x1C($sp)
+        self.asm('AFA40020')  # sw      $a0, 0x20($sp)          ; player_data + 0x6808
+        self.asm('AFB00018')  # sw      $s0, 0x18($sp)
+
+        """
+        FUN_80052A00(param_1 + 0x6808);
+        /* 01A79C 8005451C 0C014A80 */  jal   func_80052A00
+        """
+        self.asm('0C014A80')  # jal     func_80052A00
+        self.asm('8FA40020')  # lw      $a0, 0x20($sp)
+
+        self.asm('3C04800E')  # lui     $a0, 0x800E
+        self.asm('0C016EFF')  # jal     func_8005BBFC           ; open_display?
+        self.asm('348420C0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        self.asm('8FA80020')  # lw      $t0, 0x20($sp)
+        self.asm('25080040')  # addiu   $t0, $t0, 0x40
+        self.asm('AFA80014')  # sw      $t0, 0x14($sp)          ; player_data + 0x6848
+        self.asm('3C098011')  # lui     $t1, 0x8011
+        self.asm('3529EF20')  # ori     $t1, $t1, 0xEF20
+        self.asm('912A0000')  # lbu     $t2, ($t1)
+        self.asm('afaa0010')  # sw      $t2, 0x10($sp)          ; num_players
+
+        # traverse linked list
+        self.asm('3C088013')  # lui     $t0, 0x8013
+        self.asm('3508AD24')  # ori     $t0, $t0, 0xAD24        ; head of linked list
+
+        # branch target for "next_item != 0"
+        self.asm('8d090010')  # lw      $t1, 0x10($t0)          ; item_display_func
+        self.asm('11200007')  # beq     $t1, $zero, 0x1C        ; branch if item_display_func == 0
+        self.asm('8d100000')  # lw      $s0, ($t0)              ; next_item
+        self.asm('8d0a0004')  # lw      $t2, 0x4($t0)           ; item_flags
+        self.asm('11400004')  # beq     $t2, $zero, 0x10        ; branch if item_flags == 0
+        self.asm('00000000')  # nop
+        self.asm('8fa50010')  # lw      $a1, 0x10($sp)          ; num_players
+        self.asm('0120f809')  # jalr    $t1                     ; call item_display_func
+        self.asm('8fa40014')  # lw      $a0, 0x14($sp)          ; player_data + 0x6848
+
+        # branch target for "item_display_func == 0" OR "item_flags == 0"
+        self.asm('1600fff6')  # bne     $s0, $zero, -0x28       ; branch if next_item != 0
+        self.asm('02004025')  # or      $t0, $s0, $zero         ; copy $s0 to $t0
+
+        self.asm('3C04800E')  # lui     $a0, 0x800E
+        self.asm('0C016F90')  # jal     func_8005BE40           ; close_display?
+        self.asm('348420C0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        self.asm('8FBF001C')  # lw      $ra, 0x1C($sp)
+        self.asm('8FB00018')  # lw      $s0, 0x18($sp)
+        self.asm('03E00008')  # jr      $ra
+        self.asm('27BD0020')  # addiu   $sp, $sp, 0x20
+        self.next_sub_addr = self.asm_addr
+
+    def ll_add_item(self, this_item_addr, next_item_addr, item_flags, item_init_func_addr, item_update_func_addr, item_display_func_addr):
+        # next_item
+        if next_item_addr is None:
+            self.insert_bytes(this_item_addr, int(0).to_bytes(4, byteorder='big'))
+        else:
+            self.insert_bytes(this_item_addr, self.virt(next_item_addr).to_bytes(4, byteorder='big'))
+
+        # item_flags
+        self.insert_bytes(this_item_addr + 4, item_flags.to_bytes(4, byteorder='big'))
+
+        # item_init_func
+        if item_init_func_addr is None:
+            self.insert_bytes(this_item_addr + 8, int(0).to_bytes(4, byteorder='big'))
+        else:
+            self.insert_bytes(this_item_addr + 8, self.virt(item_init_func_addr).to_bytes(4, byteorder='big'))
+
+        # item_update_func
+        if item_update_func_addr is None:
+            self.insert_bytes(this_item_addr + 12, int(0).to_bytes(4, byteorder='big'))
+        else:
+            self.insert_bytes(this_item_addr + 12, self.virt(item_update_func_addr).to_bytes(4, byteorder='big'))
+
+        # item_display_func
+        if item_display_func_addr is None:
+            self.insert_bytes(this_item_addr + 16, int(0).to_bytes(4, byteorder='big'))
+        else:
+            self.insert_bytes(this_item_addr + 16, self.virt(item_display_func_addr).to_bytes(4, byteorder='big'))
+
+    def register_piece_count(self):
+        this_item_addr = 0x100FA4  # 8013AD24
+        next_item_addr = 0x100F90  # 8013AD10
+
+        self.asm_addr = self.next_sub_addr
+
+
+        item_init_func_addr = self.asm_addr
+        self.asm('2408fffc')  # addiu   $t0, $zero, -4          ; initialize piece_count to -4
+        self.asm('ac880008')  # sw      $t0, 0x8($a0)           ; store piece_count at player_data + 0x6850
+
+        self.asm('3c098013')  # lui     $t1, 0x8013
+        self.asm('3529ad50')  # ori     $t1, $t1, 0xAD50        ; x,y lut for piece_count
+        self.asm('01254821')  # addu    $t1, $t1, $a1           ; apply np_cp offset
+        self.asm('8d2a0000')  # lw      $t2, ($t1)              ; x,y for piece_count
+
+        self.asm('03e00008')  # jr      $ra
+        self.asm('ac8a000c')  # sw      $t2, 0xC($a0)           ; store x,y at player_data + 0x6854
+
+
+        item_update_func_addr = self.asm_addr
+        self.asm('8c880008')  # lw      $t0, 0x8($a0)           ; piece_count
+        self.asm('25080001')  # addiu   $t0, $t0, 1             ; increment piece_count
+
+        self.asm('03E00008')  # jr      $ra
+        self.asm('ac880008')  # sw      $t0, 0x8($a0)           ; store piece_count at player_data + 0x6850
+
+
+        item_display_func_addr = self.asm_addr
+        self.asm('27bdffc0')  # addiu   $sp, $sp, -0x40
+        self.asm('afbf0024')  # sw      $ra, 0x24($sp)
+        self.asm('afa40040')  # sw      $a0, 0x40($sp)          ; player_data + 0x6848
+        self.asm('afa50044')  # sw      $a1, 0x44($sp)          ; num_players
+        self.asm('afb0003c')  # sw      $s0, 0x3C($sp)
+
+        self.asm('8fa80044')  # lw      $t0, 0x44($sp)          ; num_players
+        self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
+        self.asm('1120001c')  # beq     $t1, $zero, 0x70        ; branch if num_players >= 3
+        self.asm('8fb00040')  # lw      $s0, 0x40($sp)          ; player_data + 0x6848
+
+        self.asm('8e060008')  # lw      $a2, 0x8($s0)           ; piece_count
+        self.asm('2408003f')  # addiu   $t0, $zero, 0x3F
+        self.asm('00c8001b')  # divu    $zero, $a2, $t0
+        self.asm('00003812')  # mflo    $a3                     ; num_bags
+        self.asm('00004810')  # mfhi    $t1
+        self.asm('afa90010')  # sw      $t1, 0x10($sp)          ; bag_count
+
+        self.asm('3c058013')  # lui     $a1, 0x8013
+        self.asm('34a5ad68')  # ori     $a1, $a1, 0xAD68        ; "%d %d %d"
+        self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
+        self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_piece_count
+
+        self.asm('9606000c')  # lhu     $a2, 0xC($s0)           ; x position for piece_count
+        self.asm('9607000e')  # lhu     $a3, 0xE($s0)           ; y position for piece_count
+        self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_piece_count
+        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
+        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
+        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
+        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
+        self.asm('afac0020')  # sw      $t4, 0x20($sp)
+        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
+        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
+        self.asm('afa90014')  # sw      $t1, 0x14($sp)
+        self.asm('afa80010')  # sw      $t0, 0x10($sp)
+        self.asm('3c058011')  # lui     $a1, 0x8011
+        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
+        self.asm('3c04800e')  # lui     $a0, 0x800E
+        self.asm('0c01de58')  # jal     func_80077960           ; display_text
+        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        # branch target for "num_players >= 3"
+        self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
+        self.asm('8fb0003c')  # lw      $s0, 0x3C($sp)
+        self.asm('03e00008')  # jr      $ra
+        self.asm('27bd0040')  # addiu   $sp, $sp, 0x40
+
+
+        self.next_sub_addr = self.asm_addr
+
+        self.ll_add_item(this_item_addr, next_item_addr, 1, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+
+    def register_remaining_pieces(self):
+        this_item_addr = 0x100F90  # 8013AD10
+        next_item_addr = 0x100F7C  # 8013ACFC
+
+        self.asm_addr = self.next_sub_addr
+
+
+        item_init_func_addr = self.asm_addr
+        self.asm('24080001')  # addiu   $t0, $zero, 1           ; initialize total_remaining_pieces to 1
+        self.asm('A0880007')  # sb      $t0, 0x7($a0)           ; store total_remaining_pieces at player_data + 0x684F
+
+        self.asm('3C098013')  # lui     $t1, 0x8013
+        self.asm('3529AD44')  # ori     $t1, $t1, 0xAD44        ; x,y lut for remaining_pieces
+        self.asm('01254821')  # addu    $t1, $t1, $a1           ; apply np_cp offset
+        self.asm('8D2A0000')  # lw      $t2, ($t1)              ; x,y for remaining_pieces
+
+        self.asm('03E00008')  # jr      $ra
+        self.asm('AC8A0010')  # sw      $t2, 0x10($a0)          ; store x,y at player_data + 0x6858
+
+
+        item_update_func_addr = self.asm_addr
+        self.asm('24880000')  # addiu   $t0, $a0, 0x0           ; remaining_pieces_array
+        self.asm('81090007')  # lb      $t1, 0x7($t0)           ; total_remaining_pieces
+        self.asm('2529ffff')  # addiu   $t1, $t1, -1            ; decrement total_remaining_pieces
+        self.asm('1d20000b')  # bgtz    $t1, 0x2C               ; branch if total_remaining_pieces > 0
+        self.asm('00000000')  # nop
+        self.asm('240a0009')  # addiu   $t2, $zero, 9           ; set each piece count to 9
+        self.asm('a10a0000')  # sb      $t2, 0x0($t0)           ; store into remaining_pieces_array[0] at player_data + 0x6848
+        self.asm('a10a0001')  # sb      $t2, 0x1($t0)           ; [1]
+        self.asm('a10a0002')  # sb      $t2, 0x2($t0)           ; [2]
+        self.asm('a10a0003')  # sb      $t2, 0x3($t0)           ; [3]
+        self.asm('a10a0004')  # sb      $t2, 0x4($t0)           ; [4]
+        self.asm('a10a0005')  # sb      $t2, 0x5($t0)           ; [5]
+        self.asm('a10a0006')  # sb      $t2, 0x6($t0)           ; [6]
+        self.asm('1000000a')  # beq     $zero, $zero, 0x28      ; unconditional branch
+        self.asm('2409003f')  # addiu   $t1, $zero, 63          ; set total_remaining_pieces to 63
+
+        # branch target for "total_remaining_pieces > 0"
+        self.asm('248afe48')  # addiu   $t2, $a0, -0x1B8        ; player_data + 0x6690
+        self.asm('8d4b0004')  # lw      $t3, 0x4($t2)           ; refill_idx
+        self.asm('000b6080')  # sll     $t4, $t3, 2             ; buf25 entries are ints
+        self.asm('014c6821')  # addu    $t5, $t2, $t4           ; add refill_idx offset
+        self.asm('8dae0008')  # lw      $t6, 0x8($t5)           ; next_seen_piece = buf25[refill_idx]
+        self.asm('010e7821')  # addu    $t7, $t0, $t6           ; remaining_pieces_array[next_seen_piece]
+        self.asm('81f80000')  # lb      $t8, ($t7)              ; get piece count
+        self.asm('2718ffff')  # addiu   $t8, $t8, -1            ; decrement
+        self.asm('a1f80000')  # sb      $t8, ($t7)              ; write back
+
+        # branch target for "unconditional"
+        self.asm('03e00008')  # jr      $ra
+        self.asm('a1090007')  # sb      $t1, 0x7($t0)           ; store total_remaining_pieces at player_data + 0x684F
+
+
+        item_display_func_addr = self.asm_addr
+        self.asm('27bdffc0')  # addiu   $sp, $sp, -0x40
+        self.asm('afbf0024')  # sw      $ra, 0x24($sp)
+        self.asm('afa40040')  # sw      $a0, 0x40($sp)          ; player_data + 0x6848
+        self.asm('afa50044')  # sw      $a1, 0x44($sp)          ; num_players
+        self.asm('afb0003c')  # sw      $s0, 0x3C($sp)
+
+        self.asm('8fa80044')  # lw      $t0, 0x44($sp)          ; num_players
+        self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
+        self.asm('11200022')  # beq     $t1, $zero, 0x88        ; branch if num_players >= 3
+        self.asm('8fb00040')  # lw      $s0, 0x40($sp)          ; player_data + 0x6848
+
+        self.asm('82060000')  # lb      $a2, 0x0($s0)           ; remaining_pieces[0]
+        self.asm('82070001')  # lb      $a3, 0x1($s0)           ; remaining_pieces[1]
+        self.asm('82090002')  # lb      $t1, 0x2($s0)           ; remaining_pieces[2]
+        self.asm('AFA90010')  # sw      $t1, 0x10($sp)
+        self.asm('82090003')  # lb      $t1, 0x3($s0)           ; remaining_pieces[3]
+        self.asm('AFA90014')  # sw      $t1, 0x14($sp)
+        self.asm('82090004')  # lb      $t1, 0x4($s0)           ; remaining_pieces[4]
+        self.asm('AFA90018')  # sw      $t1, 0x18($sp)
+        self.asm('82090005')  # lb      $t1, 0x5($s0)           ; remaining_pieces[5]
+        self.asm('AFA9001C')  # sw      $t1, 0x1C($sp)
+        self.asm('82090006')  # lb      $t1, 0x6($s0)           ; remaining_pieces[6]
+        self.asm('AFA90020')  # sw      $t1, 0x20($sp)
+
+        self.asm('3c058013')  # lui     $a1, 0x8013
+        self.asm('34a5ad5c')  # ori     $a1, $a1, 0xAD5C        ; "%d %d %d %d %d %d %d"
+        self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
+        self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_remaining_pieces
+
+        self.asm('96060010')  # lhu      $a2, 0x10($s0)         ; x position for remaining_pieces
+        self.asm('96070012')  # lhu      $a3, 0x12($s0)         ; y position for remaining_pieces
+        self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_remaining_pieces
+        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
+        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
+        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
+        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
+        self.asm('afac0020')  # sw      $t4, 0x20($sp)
+        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
+        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
+        self.asm('afa90014')  # sw      $t1, 0x14($sp)
+        self.asm('afa80010')  # sw      $t0, 0x10($sp)
+        self.asm('3c058011')  # lui     $a1, 0x8011
+        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
+        self.asm('3c04800e')  # lui     $a0, 0x800E
+        self.asm('0c01de58')  # jal     func_80077960           ; display_text
+        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        # branch target for "num_players >= 3"
+        self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
+        self.asm('8fb0003c')  # lw      $s0, 0x3C($sp)
+        self.asm('03e00008')  # jr      $ra
+        self.asm('27bd0040')  # addiu   $sp, $sp, 0x40
+
+
+        self.next_sub_addr = self.asm_addr
+
+        self.ll_add_item(this_item_addr, next_item_addr, 1, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+
+    def register_extra_lookahead(self):
+        this_item_addr = 0x100F7C  # 8013ACFC
+        next_item_addr = None
+
+        self.asm_addr = self.next_sub_addr
+
+
+        item_init_func_addr = self.asm_addr
+        self.asm('3C098013')  # lui     $t1, 0x8013
+        self.asm('3529AD38')  # ori     $t1, $t1, 0xAD38        ; x,y lut for extra_lookahead
+        self.asm('01254821')  # addu    $t1, $t1, $a1           ; apply np_cp offset
+        self.asm('8D2A0000')  # lw      $t2, ($t1)              ; x,y for extra_lookahead
+
+        self.asm('03E00008')  # jr      $ra
+        self.asm('AC8A0014')  # sw      $t2, 0x14($a0)          ; store x,y at player_data + 0x685C
+
+
+        item_update_func_addr = None
+
+
+        item_display_func_addr = self.asm_addr
+        self.asm('27bdffd0')  # addiu   $sp, $sp, -0x30
+        self.asm('afbf0024')  # sw      $ra, 0x24($sp)
+        self.asm('afa40030')  # sw      $a0, 0x30($sp)          ; player_data + 0x6848
+        self.asm('afa50034')  # sw      $a1, 0x34($sp)          ; num_players
+        self.asm('afb0002c')  # sw      $s0, 0x2C($sp)
+
+        self.asm('8fa80034')  # lw      $t0, 0x34($sp)          ; num_players
+        self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
+        self.asm('11200025')  # beq     $t1, $zero, 0x94        ; branch if num_players >= 3
+        self.asm('8fb00030')  # lw      $s0, 0x30($sp)          ; player_data + 0x6848
+
+        """
+        000963a0  80 0d 00 b0 80 0d 00 d0  80 0d 00 f0 4c 4a 5a 53  |............LJZS|  // ... 800d012c piece names: arr[7]
+        000963b0  54 49 4f 00 00 00 00 00  00 00 00 00 00 00 00 00  |TIO.............|  // L, J, Z, S, T, I, O
+        """
+        self.asm('3c08800d')  # lui     $t0, 0x800D
+        self.asm('3508012c')  # ori     $t0, $t0, 0x012C        ; "LJZSTIO"
+        self.asm('2609fe48')  # addiu   $t1, $s0, -0x1B8        ; player_data + 0x6690
+        self.asm('8d2a0004')  # lw      $t2, 0x4($t1)           ; refill_idx
+        self.asm('000a5880')  # sll     $t3, $t2, 2             ; buf25 entries are ints
+        self.asm('012b6021')  # addu    $t4, $t1, $t3           ; add refill_idx offset
+        self.asm('8d8d0008')  # lw      $t5, 0x8($t4)           ; next_seen_piece = buf25[refill_idx]
+        self.asm('010d7021')  # addu    $t6, $t0, $t5           ; "LJZSTIO"[next_seen_piece]
+        self.asm('91c60000')  # lbu     $a2, ($t6)              ; 4th lookahead
+
+        self.asm('8d2a0000')  # lw      $t2, ($t1)              ; next_idx
+        self.asm('000a5880')  # sll     $t3, $t2, 2             ; buf25 entries are ints
+        self.asm('012b6021')  # addu    $t4, $t1, $t3           ; add next_idx offset
+        self.asm('8d8d0008')  # lw      $t5, 0x8($t4)           ; next_next_seen_piece = buf25[next_idx]
+        self.asm('010d7021')  # addu    $t6, $t0, $t5           ; "LJZSTIO"[next_next_seen_piece]
+        self.asm('91c70000')  # lbu     $a3, ($t6)              ; 5th lookahead
+
+        self.asm('3c058013')  # lui     $a1, 0x8013
+        self.asm('34a5ad71')  # ori     $a1, $a1, 0xAD71        ; "%c %c"
+        self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
+        self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_extra_lookahead
+
+        self.asm('96060014')  # lhu      $a2, 0x14($s0)         ; x position for extra_lookahead
+        self.asm('96070016')  # lhu      $a3, 0x16($s0)         ; y position for extra_lookahead
+        self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_extra_lookahead
+        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
+        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
+        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
+        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
+        self.asm('afac0020')  # sw      $t4, 0x20($sp)
+        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
+        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
+        self.asm('afa90014')  # sw      $t1, 0x14($sp)
+        self.asm('afa80010')  # sw      $t0, 0x10($sp)
+        self.asm('3c058011')  # lui     $a1, 0x8011
+        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
+        self.asm('3c04800e')  # lui     $a0, 0x800E
+        self.asm('0c01de58')  # jal     func_80077960           ; display_text
+        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        # branch target for "num_players >= 3"
+        self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
+        self.asm('8fb0002c')  # lw      $s0, 0x2C($sp)
+        self.asm('03e00008')  # jr      $ra
+        self.asm('27bd0030')  # addiu   $sp, $sp, 0x30
+
+
+        self.next_sub_addr = self.asm_addr
+
+        self.ll_add_item(this_item_addr, next_item_addr, 1, item_init_func_addr, item_update_func_addr, item_display_func_addr)

@@ -38,8 +38,11 @@ def auto_int(x):
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-v', '--verbose', action='store_true', help='increase verbosity')
-    parser.add_argument('-s', '--saveseed', action='store_true', help='saves seed')
-    parser.add_argument('-d', '--displayseed', action='store_true', help='displays seed')
+    parser.add_argument('-f', '--force', action='store_true', help='bypass safety checks')
+    parser.add_argument('-s', action='store_true', help='displays seed')
+    parser.add_argument('-p', action='store_true', help='displays piece count')
+    parser.add_argument('-r', action='store_true', help='displays remaining pieces')
+    parser.add_argument('-l', action='store_true', help='displays extra lookahead')
     parser.add_argument('SRC', help='source rom file')
     parser.add_argument('DEST', help='output rom file')
 
@@ -89,17 +92,31 @@ def main():
 
     args = parser.parse_args()
 
-    rom = TheNewTetrisRom(verbose=args.verbose)
+    rom = TheNewTetrisRom(verbose=args.verbose, force=args.force)
     rom.from_file(args.SRC)
+
+    rom.move_heap()
+    rom.init_static_data()
+    rom.heap_alloc_player_data()
+    rom.init_player_stats()
+    rom.update_player_stats()
+    rom.display_player_stats()
+
+    if args.s:
+        rom.save_seed()
+        rom.display_seed()
+
+    if args.p:
+        rom.register_piece_count()
+
+    if args.r:
+        rom.register_remaining_pieces()
+
+    if args.l:
+        rom.register_extra_lookahead()
 
     if args.seed is not None:
         rom.modify_seed(args.seed)
-
-    if args.displayseed:
-        rom.save_seed()
-        rom.display_seed()
-    elif args.saveseed:
-        rom.save_seed()
 
     if args.image is not None:
         if args.i is not None:
@@ -146,9 +163,8 @@ def main():
 
     if args.stat is not None:
         if args.stat == 4 and ((args.xy is not None) or (args.rgba is not None)):
-            if not args.displayseed:
-                if not args.saveseed:
-                    rom.save_seed()
+            if not args.s:
+                rom.save_seed()
                 rom.display_seed()
         if args.xy is not None:
             x, y = args.xy

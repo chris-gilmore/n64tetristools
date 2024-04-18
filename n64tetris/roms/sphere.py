@@ -19,8 +19,8 @@ class AssetFormat(Enum):
     SIZE_ASSUMED = auto()
 
 class TetrisphereRom(BaseRom):
-    def __init__(self, verbose=False):
-        super().__init__(verbose=verbose)
+    def __init__(self, verbose=False, force=False):
+        super().__init__(game_code=b'NTPE', verbose=verbose, force=force)
         self.decoders = (self.sqsh_decode,)
 
     def sqsh_decompress(self, addr, compressed_size, expected_size):
