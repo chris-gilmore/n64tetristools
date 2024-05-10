@@ -102,18 +102,22 @@ def main():
     rom.update_player_stats()
     rom.display_player_stats()
 
+    rom.save_seed()
     if args.s:
-        rom.save_seed()
         rom.display_seed()
 
+    rom.register_piece_count()
+    rom.register_remaining_pieces()
+    rom.register_extra_lookahead()
+
     if args.p:
-        rom.register_piece_count()
+        rom.enable_piece_count()
 
     if args.r:
-        rom.register_remaining_pieces()
+        rom.enable_remaining_pieces()
 
     if args.l:
-        rom.register_extra_lookahead()
+        rom.enable_extra_lookahead()
 
     if args.seed is not None:
         rom.modify_seed(args.seed)
@@ -164,7 +168,6 @@ def main():
     if args.stat is not None:
         if args.stat == 4 and ((args.xy is not None) or (args.rgba is not None)):
             if not args.s:
-                rom.save_seed()
                 rom.display_seed()
         if args.xy is not None:
             x, y = args.xy

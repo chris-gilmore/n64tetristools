@@ -779,15 +779,15 @@ class TheNewTetrisRom(BaseRom):
 
         # x,y - remaining_pieces, 2p, p2
         addr = 0x100FCC  # 8013AD4C
-        self.insert_bytes(addr, b'\x00\xFC\x00\xFC')
+        self.insert_bytes(addr, b'\x00\xF0\x00\xFC')
 
         # x,y - remaining_pieces, 2p, p1
         addr = 0x100FC8  # 8013AD48
-        self.insert_bytes(addr, b'\x00\x3B\x00\xFC')
+        self.insert_bytes(addr, b'\x00\x2F\x00\xFC')
 
         # x,y - remaining_pieces, 1p, p1
         addr = 0x100FC4  # 8013AD44
-        self.insert_bytes(addr, b'\x00\x5B\x01\x0A')
+        self.insert_bytes(addr, b'\x00\x51\x01\x03')
 
         # x,y - extra_lookahead, 2p, p2
         addr = 0x100FC0  # 8013AD40
@@ -814,6 +814,10 @@ class TheNewTetrisRom(BaseRom):
         addr = 0x100F7C  # 8013ACFC
         self.insert_bytes(addr, b'\x00' * 20)
 
+        # remaining_pieces names, 1p, p1
+        addr = 0x100F6E  # 8013ACEE
+        self.insert_bytes(addr, b'L J Z S T I O\x00')
+
     def save_seed(self):
         """
         In FUN_80052114, replace:
@@ -834,6 +838,16 @@ class TheNewTetrisRom(BaseRom):
         self.asm('3c098013')  # lui     $t1, 0x8013
         self.asm('3529ad7c')  # ori     $t1, $t1, 0xAD7C
         self.asm('ad280000')  # sw      $t0, ($t1)              ; store seed into 8013AD7C
+
+        # store 0x9 into 46 shorts beginning at 80110A0C
+        self.asm('3c088011')  # lui     $t0, 0x8011
+        self.asm('35080a0c')  # ori     $t0, $t0, 0x0A0C
+        self.asm('2409002e')  # addiu   $t1, $zero, 0x2E        ; 46 chars in font_c
+        self.asm('240a0009')  # addiu   $t2, $zero, 0x9
+        self.asm('a50a0000')  # sh      $t2, ($t0)              ; sets char width to 9
+        self.asm('2529ffff')  # addiu   $t1, $t1, -1
+        self.asm('1d20fffd')  # bgtz    $t1, -0xC
+        self.asm('25080002')  # addiu   $t0, $t0, 2
 
         """
         FUN_80041260();
@@ -1140,6 +1154,13 @@ class TheNewTetrisRom(BaseRom):
         else:
             self.insert_bytes(this_item_addr + 16, self.virt(item_display_func_addr).to_bytes(4, byteorder='big'))
 
+    def ll_update_item_flags(self, this_item_addr, item_flags):
+        self.insert_bytes(this_item_addr + 4, item_flags.to_bytes(4, byteorder='big'))
+
+    def enable_piece_count(self):
+        this_item_addr = 0x100FA4  # 8013AD24
+        self.ll_update_item_flags(this_item_addr, 1)
+
     def register_piece_count(self):
         this_item_addr = 0x100FA4  # 8013AD24
         next_item_addr = 0x100F90  # 8013AD10
@@ -1219,7 +1240,11 @@ class TheNewTetrisRom(BaseRom):
 
         self.next_sub_addr = self.asm_addr
 
-        self.ll_add_item(this_item_addr, next_item_addr, 1, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+        self.ll_add_item(this_item_addr, next_item_addr, 0, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+
+    def enable_remaining_pieces(self):
+        this_item_addr = 0x100F90  # 8013AD10
+        self.ll_update_item_flags(this_item_addr, 1)
 
     def register_remaining_pieces(self):
         this_item_addr = 0x100F90  # 8013AD10
@@ -1283,7 +1308,8 @@ class TheNewTetrisRom(BaseRom):
 
         self.asm('8fa80044')  # lw      $t0, 0x44($sp)          ; num_players
         self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
-        self.asm('11200022')  # beq     $t1, $zero, 0x88        ; branch if num_players >= 3
+        #self.asm('11200022')  # beq     $t1, $zero, 0x88        ; branch if num_players >= 3
+        self.asm('11200035')  # beq     $t1, $zero, 0xD4        ; branch if num_players >= 3
         self.asm('8fb00040')  # lw      $s0, 0x40($sp)          ; player_data + 0x6848
 
         self.asm('82060000')  # lb      $a2, 0x0($s0)           ; remaining_pieces[0]
@@ -1304,9 +1330,30 @@ class TheNewTetrisRom(BaseRom):
         self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
         self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_remaining_pieces
 
-        self.asm('96060010')  # lhu      $a2, 0x10($s0)         ; x position for remaining_pieces
-        self.asm('96070012')  # lhu      $a3, 0x12($s0)         ; y position for remaining_pieces
+        self.asm('96060010')  # lhu     $a2, 0x10($s0)          ; x position for remaining_pieces
+        self.asm('96070012')  # lhu     $a3, 0x12($s0)          ; y position for remaining_pieces
         self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_remaining_pieces
+        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
+        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
+        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
+        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
+        self.asm('afac0020')  # sw      $t4, 0x20($sp)
+        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
+        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
+        self.asm('afa90014')  # sw      $t1, 0x14($sp)
+        self.asm('afa80010')  # sw      $t0, 0x10($sp)
+        self.asm('3c058011')  # lui     $a1, 0x8011
+        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
+        self.asm('3c04800e')  # lui     $a0, 0x800E
+        self.asm('0c01de58')  # jal     func_80077960           ; display_text
+        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        # 8013ACEE, height of 12
+        self.asm('96060010')  # lhu     $a2, 0x10($s0)          ; x position for remaining_pieces
+        self.asm('96070012')  # lhu     $a3, 0x12($s0)          ; y position for remaining_pieces
+        self.asm('24e7000e')  # addiu   $a3, $a3, 0xE           ; move y to next line
+        self.asm('3c088013')  # lui     $t0, 0x8013
+        self.asm('3508acee')  # ori     $t0, $t0, 0xACEE        ; "L J Z S T I O"
         self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
         self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
         self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
@@ -1331,7 +1378,11 @@ class TheNewTetrisRom(BaseRom):
 
         self.next_sub_addr = self.asm_addr
 
-        self.ll_add_item(this_item_addr, next_item_addr, 1, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+        self.ll_add_item(this_item_addr, next_item_addr, 0, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+
+    def enable_extra_lookahead(self):
+        this_item_addr = 0x100F7C  # 8013ACFC
+        self.ll_update_item_flags(this_item_addr, 1)
 
     def register_extra_lookahead(self):
         this_item_addr = 0x100F7C  # 8013ACFC
@@ -1391,8 +1442,8 @@ class TheNewTetrisRom(BaseRom):
         self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
         self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_extra_lookahead
 
-        self.asm('96060014')  # lhu      $a2, 0x14($s0)         ; x position for extra_lookahead
-        self.asm('96070016')  # lhu      $a3, 0x16($s0)         ; y position for extra_lookahead
+        self.asm('96060014')  # lhu     $a2, 0x14($s0)          ; x position for extra_lookahead
+        self.asm('96070016')  # lhu     $a3, 0x16($s0)          ; y position for extra_lookahead
         self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_extra_lookahead
         self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
         self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
@@ -1418,4 +1469,4 @@ class TheNewTetrisRom(BaseRom):
 
         self.next_sub_addr = self.asm_addr
 
-        self.ll_add_item(this_item_addr, next_item_addr, 1, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+        self.ll_add_item(this_item_addr, next_item_addr, 0, item_init_func_addr, item_update_func_addr, item_display_func_addr)
