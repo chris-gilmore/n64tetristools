@@ -29,22 +29,36 @@ class TheNewTetrisSram:
         open(filename, 'wb').write(self.data)
 
     def update_checksum(self, start):
-        sum = self.calc_checksum(start)
-        self.data[start + 0x18FC : start + 0x1900] = sum.to_bytes(4, byteorder=self.endianness)
+        checksum = self.calc_checksum(start, 0x18FC)
+        self.write(checksum, start, 0x18FC, 4)
         if self.verbose:
-            print(f"checksum at 0x{start+0x18FC:04X}: 0x{sum:08X}")
+            print(f"Writing checksum at 0x{start+0x18FC:04X} to 0x{checksum:08X}")
 
-    def calc_checksum(self, start):
-        sum = 0
+    def calc_checksum(self, start, length):
+        checksum = 0
         i = 0
-        while i < 0x18FC:
+        while i < length:
             if self.endianness == 'big':
                 a, b, c, d = self.data[start + i : start + i + 4]
             else:
                 d, c, b, a = self.data[start + i : start + i + 4]
-            sum += a ^ 0x10
-            sum += b ^ 0x20
-            sum -= c
-            sum -= d << 1
+            checksum += a ^ 0x10
+            checksum += b ^ 0x20
+            checksum -= c
+            checksum -= d << 1
             i += 4
-        return sum & 0xFFFFFFFF
+        return checksum & 0xFFFFFFFF
+
+    def write(self, value, start, offset, nbytes):
+        self.data[start + offset : start + offset + nbytes] = value.to_bytes(nbytes, byteorder=self.endianness)
+
+    def write_thrice(self, value, offset, nbytes):
+        self.write(value, 0x0, offset, nbytes)
+        self.write(value, 0x1900, offset, nbytes)
+        self.write(value, 0x3200, offset, nbytes)
+
+    def set_total_wonder_lines(self, twl):
+        odd_bits = twl & 0xAAAAAAAA
+        even_bits = twl & 0x55555555
+        self.write_thrice(odd_bits, 0xF04, 4)
+        self.write_thrice(even_bits, 0xF08, 4)
