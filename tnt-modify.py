@@ -96,6 +96,7 @@ def main():
     rom.from_file(args.SRC)
 
     rom.move_heap()
+    rom.add_utility_functions()
     rom.init_static_data()
     rom.heap_alloc_player_data()
     rom.init_player_stats()

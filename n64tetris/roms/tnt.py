@@ -751,6 +751,39 @@ class TheNewTetrisRom(BaseRom):
         #self.asm('3C0F8013')  # lui     $t7, 0x8013
         #self.asm('35EFAD80')  # ori     $t7, $t7, 0xAD80
 
+    def func_display_text(self):
+        addr = self.next_sub_addr
+        self.jal_display_text = self.jal(self.virt(addr))
+
+        self.asm_addr = addr
+        self.asm('27bdffd8')  # addiu   $sp, $sp, -0x28
+        self.asm('afbf0024')  # sw      $ra, 0x24($sp)
+
+        self.asm('afa60010')  # sw      $a2, 0x10($sp)          ; str
+        self.asm('00a03825')  # or      $a3, $a1, $zero         ; y
+        self.asm('00803025')  # or      $a2, $a0, $zero         ; x
+        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
+        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
+        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
+        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
+        self.asm('afac0020')  # sw      $t4, 0x20($sp)
+        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
+        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
+        self.asm('afa90014')  # sw      $t1, 0x14($sp)
+        self.asm('3c058011')  # lui     $a1, 0x8011
+        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
+        self.asm('3c04800e')  # lui     $a0, 0x800E
+        self.asm('0c01de58')  # jal     func_80077960           ; display_text
+        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+
+        self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
+        self.asm('03e00008')  # jr      $ra
+        self.asm('27bd0028')  # addiu   $sp, $sp, 0x28
+        self.next_sub_addr = self.asm_addr
+
+    def add_utility_functions(self):
+        self.func_display_text()
+
     def init_static_data(self):
         # reserves space for seed
         addr = 0x100FFC  # 8013AD7C
@@ -787,7 +820,7 @@ class TheNewTetrisRom(BaseRom):
 
         # x,y - remaining_pieces, 1p, p1
         addr = 0x100FC4  # 8013AD44
-        self.insert_bytes(addr, b'\x00\x51\x01\x03')
+        self.insert_bytes(addr, b'\x00\x35\x00\x66')
 
         # x,y - extra_lookahead, 2p, p2
         addr = 0x100FC0  # 8013AD40
@@ -814,10 +847,6 @@ class TheNewTetrisRom(BaseRom):
         addr = 0x100F7C  # 8013ACFC
         self.insert_bytes(addr, b'\x00' * 20)
 
-        # remaining_pieces names, 1p, p1
-        addr = 0x100F6E  # 8013ACEE
-        self.insert_bytes(addr, b'L J Z S T I O\x00')
-
     def save_seed(self):
         """
         In FUN_80052114, replace:
@@ -839,6 +868,7 @@ class TheNewTetrisRom(BaseRom):
         self.asm('3529ad7c')  # ori     $t1, $t1, 0xAD7C
         self.asm('ad280000')  # sw      $t0, ($t1)              ; store seed into 8013AD7C
 
+        """
         # store 0x9 into 46 shorts beginning at 80110A0C
         self.asm('3c088011')  # lui     $t0, 0x8011
         self.asm('35080a0c')  # ori     $t0, $t0, 0x0A0C
@@ -848,6 +878,7 @@ class TheNewTetrisRom(BaseRom):
         self.asm('2529ffff')  # addiu   $t1, $t1, -1
         self.asm('1d20fffd')  # bgtz    $t1, -0xC
         self.asm('25080002')  # addiu   $t0, $t0, 2
+        """
 
         """
         FUN_80041260();
@@ -1198,7 +1229,7 @@ class TheNewTetrisRom(BaseRom):
 
         self.asm('8fa80044')  # lw      $t0, 0x44($sp)          ; num_players
         self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
-        self.asm('1120001c')  # beq     $t1, $zero, 0x70        ; branch if num_players >= 3
+        self.asm('1120000f')  # beq     $t1, $zero, 0x3C        ; branch if num_players >= 3
         self.asm('8fb00040')  # lw      $s0, 0x40($sp)          ; player_data + 0x6848
 
         self.asm('8e060008')  # lw      $a2, 0x8($s0)           ; piece_count
@@ -1213,23 +1244,10 @@ class TheNewTetrisRom(BaseRom):
         self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
         self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_piece_count
 
-        self.asm('9606000c')  # lhu     $a2, 0xC($s0)           ; x position for piece_count
-        self.asm('9607000e')  # lhu     $a3, 0xE($s0)           ; y position for piece_count
-        self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_piece_count
-        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
-        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
-        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
-        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
-        self.asm('afac0020')  # sw      $t4, 0x20($sp)
-        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
-        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
-        self.asm('afa90014')  # sw      $t1, 0x14($sp)
-        self.asm('afa80010')  # sw      $t0, 0x10($sp)
-        self.asm('3c058011')  # lui     $a1, 0x8011
-        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
-        self.asm('3c04800e')  # lui     $a0, 0x800E
-        self.asm('0c01de58')  # jal     func_80077960           ; display_text
-        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+        self.asm('27a60028')  # addiu   $a2, $sp, 0x28          ; s_piece_count
+        self.asm('9605000e')  # lhu     $a1, 0xE($s0)           ; y position for piece_count
+        self.asm(self.jal_display_text)  # jal     func_display_text
+        self.asm('9604000c')  # lhu     $a0, 0xC($s0)           ; x position for piece_count
 
         # branch target for "num_players >= 3"
         self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
@@ -1305,76 +1323,44 @@ class TheNewTetrisRom(BaseRom):
         self.asm('afa40040')  # sw      $a0, 0x40($sp)          ; player_data + 0x6848
         self.asm('afa50044')  # sw      $a1, 0x44($sp)          ; num_players
         self.asm('afb0003c')  # sw      $s0, 0x3C($sp)
+        self.asm('afb10038')  # sw      $s1, 0x38($sp)
+        self.asm('afb20034')  # sw      $s2, 0x34($sp)
+        self.asm('afb30030')  # sw      $s3, 0x30($sp)
 
         self.asm('8fa80044')  # lw      $t0, 0x44($sp)          ; num_players
-        self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
-        #self.asm('11200022')  # beq     $t1, $zero, 0x88        ; branch if num_players >= 3
-        self.asm('11200035')  # beq     $t1, $zero, 0xD4        ; branch if num_players >= 3
+        self.asm('2d090002')  # sltiu   $t1, $t0, 0x2
+        self.asm('11200011')  # beq     $t1, $zero, 0x44        ; branch if num_players >= 2
         self.asm('8fb00040')  # lw      $s0, 0x40($sp)          ; player_data + 0x6848
 
-        self.asm('82060000')  # lb      $a2, 0x0($s0)           ; remaining_pieces[0]
-        self.asm('82070001')  # lb      $a3, 0x1($s0)           ; remaining_pieces[1]
-        self.asm('82090002')  # lb      $t1, 0x2($s0)           ; remaining_pieces[2]
-        self.asm('AFA90010')  # sw      $t1, 0x10($sp)
-        self.asm('82090003')  # lb      $t1, 0x3($s0)           ; remaining_pieces[3]
-        self.asm('AFA90014')  # sw      $t1, 0x14($sp)
-        self.asm('82090004')  # lb      $t1, 0x4($s0)           ; remaining_pieces[4]
-        self.asm('AFA90018')  # sw      $t1, 0x18($sp)
-        self.asm('82090005')  # lb      $t1, 0x5($s0)           ; remaining_pieces[5]
-        self.asm('AFA9001C')  # sw      $t1, 0x1C($sp)
-        self.asm('82090006')  # lb      $t1, 0x6($s0)           ; remaining_pieces[6]
-        self.asm('AFA90020')  # sw      $t1, 0x20($sp)
+        self.asm('96120010')  # lhu     $s2, 0x10($s0)          ; x position for remaining_pieces
+        self.asm('96130012')  # lhu     $s3, 0x12($s0)          ; y position for remaining_pieces
 
+        self.asm('24110007')  # addiu   $s1, $zero, 0x7
+
+        self.asm('82060000')  # lb      $a2, ($s0)              ; remaining_pieces[i]
         self.asm('3c058013')  # lui     $a1, 0x8013
-        self.asm('34a5ad5c')  # ori     $a1, $a1, 0xAD5C        ; "%d %d %d %d %d %d %d"
+        self.asm('34a5ad6e')  # ori     $a1, $a1, 0xAD6e        ; "%d"
         self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
         self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_remaining_pieces
 
-        self.asm('96060010')  # lhu     $a2, 0x10($s0)          ; x position for remaining_pieces
-        self.asm('96070012')  # lhu     $a3, 0x12($s0)          ; y position for remaining_pieces
-        self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_remaining_pieces
-        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
-        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
-        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
-        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
-        self.asm('afac0020')  # sw      $t4, 0x20($sp)
-        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
-        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
-        self.asm('afa90014')  # sw      $t1, 0x14($sp)
-        self.asm('afa80010')  # sw      $t0, 0x10($sp)
-        self.asm('3c058011')  # lui     $a1, 0x8011
-        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
-        self.asm('3c04800e')  # lui     $a0, 0x800E
-        self.asm('0c01de58')  # jal     func_80077960           ; display_text
-        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+        self.asm('27a60028')  # addiu   $a2, $sp, 0x28          ; s_remaining_pieces
+        self.asm('02602825')  # or      $a1, $s3, $zero
+        self.asm(self.jal_display_text)  # jal     func_display_text
+        self.asm('02402025')  # or      $a0, $s2, $zero
 
-        # 8013ACEE, height of 12
-        self.asm('96060010')  # lhu     $a2, 0x10($s0)          ; x position for remaining_pieces
-        self.asm('96070012')  # lhu     $a3, 0x12($s0)          ; y position for remaining_pieces
-        self.asm('24e7000e')  # addiu   $a3, $a3, 0xE           ; move y to next line
-        self.asm('3c088013')  # lui     $t0, 0x8013
-        self.asm('3508acee')  # ori     $t0, $t0, 0xACEE        ; "L J Z S T I O"
-        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
-        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
-        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
-        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
-        self.asm('afac0020')  # sw      $t4, 0x20($sp)
-        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
-        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
-        self.asm('afa90014')  # sw      $t1, 0x14($sp)
-        self.asm('afa80010')  # sw      $t0, 0x10($sp)
-        self.asm('3c058011')  # lui     $a1, 0x8011
-        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
-        self.asm('3c04800e')  # lui     $a0, 0x800E
-        self.asm('0c01de58')  # jal     func_80077960           ; display_text
-        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+        self.asm('26730013')  # addiu   $s3, $s3, 0x13          ; move y to next line
+        self.asm('2631ffff')  # addiu   $s1, $s1, -1
+        self.asm('1e20fff4')  # bgtz    $s1, -0x30
+        self.asm('26100001')  # addiu   $s0, $s0, 1
 
-        # branch target for "num_players >= 3"
+        # branch target for "num_players >= 2"
         self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
         self.asm('8fb0003c')  # lw      $s0, 0x3C($sp)
+        self.asm('8fb10038')  # lw      $s1, 0x38($sp)
+        self.asm('8fb20034')  # lw      $s2, 0x34($sp)
+        self.asm('8fb30030')  # lw      $s3, 0x30($sp)
         self.asm('03e00008')  # jr      $ra
         self.asm('27bd0040')  # addiu   $sp, $sp, 0x40
-
 
         self.next_sub_addr = self.asm_addr
 
@@ -1413,7 +1399,7 @@ class TheNewTetrisRom(BaseRom):
 
         self.asm('8fa80034')  # lw      $t0, 0x34($sp)          ; num_players
         self.asm('2d090003')  # sltiu   $t1, $t0, 0x3
-        self.asm('11200025')  # beq     $t1, $zero, 0x94        ; branch if num_players >= 3
+        self.asm('11200018')  # beq     $t1, $zero, 0x60        ; branch if num_players >= 3
         self.asm('8fb00030')  # lw      $s0, 0x30($sp)          ; player_data + 0x6848
 
         """
@@ -1442,23 +1428,10 @@ class TheNewTetrisRom(BaseRom):
         self.asm('0c02d8b5')  # jal     func_800B62D4           ; sprintf()
         self.asm('27a40028')  # addiu   $a0, $sp, 0x28          ; s_extra_lookahead
 
-        self.asm('96060014')  # lhu     $a2, 0x14($s0)          ; x position for extra_lookahead
-        self.asm('96070016')  # lhu     $a3, 0x16($s0)          ; y position for extra_lookahead
-        self.asm('27a80028')  # addiu   $t0, $sp, 0x28          ; s_extra_lookahead
-        self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
-        self.asm('240a00ff')  # addiu   $t2, $zero, 0xFF        ; green
-        self.asm('240b00ff')  # addiu   $t3, $zero, 0xFF        ; blue
-        self.asm('240c00ff')  # addiu   $t4, $zero, 0xFF        ; alpha
-        self.asm('afac0020')  # sw      $t4, 0x20($sp)
-        self.asm('afab001c')  # sw      $t3, 0x1C($sp)
-        self.asm('afaa0018')  # sw      $t2, 0x18($sp)
-        self.asm('afa90014')  # sw      $t1, 0x14($sp)
-        self.asm('afa80010')  # sw      $t0, 0x10($sp)
-        self.asm('3c058011')  # lui     $a1, 0x8011
-        self.asm('34a50a08')  # ori     $a1, $a1, 0xA08         ; font
-        self.asm('3c04800e')  # lui     $a0, 0x800E
-        self.asm('0c01de58')  # jal     func_80077960           ; display_text
-        self.asm('348420c0')  # ori     $a0, $a0, 0x20C0        ; ?
+        self.asm('27a60028')  # addiu   $a2, $sp, 0x28          ; s_extra_lookahead
+        self.asm('96050016')  # lhu     $a1, 0x16($s0)           ; y position for extra_lookahead
+        self.asm(self.jal_display_text)  # jal     func_display_text
+        self.asm('96040014')  # lhu     $a0, 0x14($s0)           ; x position for extra_lookahead
 
         # branch target for "num_players >= 3"
         self.asm('8fbf0024')  # lw      $ra, 0x24($sp)
