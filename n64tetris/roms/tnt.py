@@ -811,12 +811,12 @@ class TheNewTetrisRom(BaseRom):
         self.insert_bytes(addr, b'\x01\x27\x00\x9B')
 
         # x,y - remaining_pieces, 2p, p2
-        addr = 0x100FCC  # 8013AD4C
-        self.insert_bytes(addr, b'\x00\xF0\x00\xFC')
+        #addr = 0x100FCC  # 8013AD4C
+        #self.insert_bytes(addr, b'\x00\xF0\x00\xFC')
 
         # x,y - remaining_pieces, 2p, p1
-        addr = 0x100FC8  # 8013AD48
-        self.insert_bytes(addr, b'\x00\x2F\x00\xFC')
+        #addr = 0x100FC8  # 8013AD48
+        #self.insert_bytes(addr, b'\x00\x2F\x00\xFC')
 
         # x,y - remaining_pieces, 1p, p1
         addr = 0x100FC4  # 8013AD44
@@ -928,9 +928,9 @@ class TheNewTetrisRom(BaseRom):
         self.asm('0c016eff')  # jal     func_8005BBFC           ; open_display?
         self.asm('02002025')  # or      $a0, $s0, $zero         ; copy $s0 to $a0
 
-        self.asm('24060006')  # addiu   $a2, $zero, 0x6         ; x position for seed
+        self.asm('2406000c')  # addiu   $a2, $zero, 0xC         ; x position for seed
         self.seed_xpos_addr = self.asm_addr - 2
-        self.asm('2407011a')  # addiu   $a3, $zero, 0x11A       ; y position for seed
+        self.asm('2407011d')  # addiu   $a3, $zero, 0x11D       ; y position for seed
         self.seed_ypos_addr = self.asm_addr - 2
         self.asm('27a80024')  # addiu   $t0, $sp, 0x24          ; s_seed
         self.asm('240900ff')  # addiu   $t1, $zero, 0xFF        ; red
@@ -1362,6 +1362,7 @@ class TheNewTetrisRom(BaseRom):
         self.asm('03e00008')  # jr      $ra
         self.asm('27bd0040')  # addiu   $sp, $sp, 0x40
 
+
         self.next_sub_addr = self.asm_addr
 
         self.ll_add_item(this_item_addr, next_item_addr, 0, item_init_func_addr, item_update_func_addr, item_display_func_addr)
@@ -1443,3 +1444,15 @@ class TheNewTetrisRom(BaseRom):
         self.next_sub_addr = self.asm_addr
 
         self.ll_add_item(this_item_addr, next_item_addr, 0, item_init_func_addr, item_update_func_addr, item_display_func_addr)
+
+    """
+    def shift_piece(self, position, value):
+        addr1 = 0x0962b0
+        value &= 0xFF
+        self.data[addr1 + position: addr1 + position + 1] = bytes([value])
+    """
+
+    def modify_handicap(self, value):
+        addr1 = 0x096180
+        value &= 0xFF
+        self.data[addr1 : addr1 + 1] = bytes([value])

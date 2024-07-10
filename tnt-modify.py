@@ -90,6 +90,9 @@ def main():
     group_sqsz = parser.add_argument_group('sqsz', 'Square size.')
     group_sqsz.add_argument('--sqsz', type=int, choices=[2, 4, 6, 8], help='(default: 4)')
 
+    group_handicap = parser.add_argument_group('handiciap', 'Raise the bottom of the playfield for marathon and sprint.')
+    group_handicap.add_argument('--handicap', metavar='[0-19]', choices=range(0, 20), type=int, help='rows (default: 0)')
+
     args = parser.parse_args()
 
     rom = TheNewTetrisRom(verbose=args.verbose, force=args.force)
@@ -182,6 +185,9 @@ def main():
 
     if args.sqsz is not None:
         rom.modify_square_size(args.sqsz)
+
+    if args.handicap is not None:
+        rom.modify_handicap(args.handicap)
 
     rom.to_file(args.DEST)
 
