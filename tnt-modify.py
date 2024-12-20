@@ -39,10 +39,11 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-v', '--verbose', action='store_true', help='increase verbosity')
     parser.add_argument('-f', '--force', action='store_true', help='bypass safety checks')
-    parser.add_argument('-s', action='store_true', help='displays seed')
-    parser.add_argument('-p', action='store_true', help='displays piece count')
-    parser.add_argument('-r', action='store_true', help='displays remaining pieces')
-    parser.add_argument('-l', action='store_true', help='displays extra lookahead')
+    parser.add_argument('-X', action='store_true', help='enables experimental features')
+    parser.add_argument('-s', action='store_true', help='displays seed (requires -X)')
+    parser.add_argument('-p', action='store_true', help='displays piece count (requires -X)')
+    parser.add_argument('-r', action='store_true', help='displays remaining pieces (requires -X)')
+    parser.add_argument('-l', action='store_true', help='displays extra lookahead (requires -X)')
     parser.add_argument('SRC', help='source rom file')
     parser.add_argument('DEST', help='output rom file')
 
@@ -98,30 +99,31 @@ def main():
     rom = TheNewTetrisRom(verbose=args.verbose, force=args.force)
     rom.from_file(args.SRC)
 
-    rom.move_heap()
-    rom.add_utility_functions()
-    rom.init_static_data()
-    rom.heap_alloc_player_data()
-    rom.init_player_stats()
-    rom.update_player_stats()
-    rom.display_player_stats()
+    if args.X:
+        rom.move_heap()
+        rom.add_utility_functions()
+        rom.init_static_data()
+        rom.heap_alloc_player_data()
+        rom.init_player_stats()
+        rom.update_player_stats()
+        rom.display_player_stats()
 
-    rom.save_seed()
-    if args.s:
-        rom.display_seed()
+        rom.save_seed()
+        if args.s:
+            rom.display_seed()
 
-    rom.register_piece_count()
-    rom.register_remaining_pieces()
-    rom.register_extra_lookahead()
+        rom.register_piece_count()
+        rom.register_remaining_pieces()
+        rom.register_extra_lookahead()
 
-    if args.p:
-        rom.enable_piece_count()
+        if args.p:
+            rom.enable_piece_count()
 
-    if args.r:
-        rom.enable_remaining_pieces()
+        if args.r:
+            rom.enable_remaining_pieces()
 
-    if args.l:
-        rom.enable_extra_lookahead()
+        if args.l:
+            rom.enable_extra_lookahead()
 
     if args.seed is not None:
         rom.modify_seed(args.seed)
@@ -170,15 +172,20 @@ def main():
         rom.modify_screens(start, end)
 
     if args.stat is not None:
+        skip = False
         if args.stat == 4 and ((args.xy is not None) or (args.rgba is not None)):
-            if not args.s:
-                rom.display_seed()
-        if args.xy is not None:
-            x, y = args.xy
-            rom.modify_stat_position(args.stat, x, y)
-        if args.rgba is not None:
-            r, g, b, a = args.rgba
-            rom.modify_stat_color(args.stat, r, g, b, a)
+            if args.X:
+                if not args.s:
+                    rom.display_seed()
+            else:
+                skip = True
+        if not skip:
+            if args.xy is not None:
+                x, y = args.xy
+                rom.modify_stat_position(args.stat, x, y)
+            if args.rgba is not None:
+                r, g, b, a = args.rgba
+                rom.modify_stat_color(args.stat, r, g, b, a)
 
     if args.ihp is not None:
         rom.modify_initial_hold_piece(args.ihp)

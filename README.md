@@ -1,6 +1,6 @@
 
 ```
-usage: tnt-modify.py [-h] [-v] [-f] [-s] [-p] [-r] [-l] [--image FILE]
+usage: tnt-modify.py [-h] [-v] [-f] [-X] [-s] [-p] [-r] [-l] [--image FILE]
                      [-i ADDR | -n NAME] [--seed VALUE] [--bag # # #]
                      [--sprint TIME] [--ultra LINES] [--piece TYPE]
                      [--dc # # #] [--sc # # #] [--spawn JIFFIES]
@@ -18,10 +18,11 @@ options:
   -h, --help         show this help message and exit
   -v, --verbose      increase verbosity
   -f, --force        bypass safety checks
-  -s                 displays seed
-  -p                 displays piece count
-  -r                 displays remaining pieces
-  -l                 displays extra lookahead
+  -X                 enables experimental features
+  -s                 displays seed (requires -X)
+  -p                 displays piece count (requires -X)
+  -r                 displays remaining pieces (requires -X)
+  -l                 displays extra lookahead (requires -X)
 
 image:
   Insert image either by address or by name.
