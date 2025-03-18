@@ -110,8 +110,7 @@ class TheNewTetrisRom(BaseRom):
                 im = Image.frombytes('RGBA', (asset_info['width'], asset_info['height']), utils.rgba5551_to_rgba8888(raw[8:]))
 
             elif asset_format == AssetFormat.INTENSITY:
-                im = Image.frombytes('L', (asset_info['width'], asset_info['height']), raw[8:])
-                im.info['transparency'] = 0x00
+                im = Image.frombytes('LA', (asset_info['width'], asset_info['height']), utils.ia44_to_ia88(raw[8:]))
 
             elif asset_format == AssetFormat.COLOR_INDEX:
                 im = Image.frombytes('P', (asset_info['width'], asset_info['height']), raw[8:])
@@ -205,12 +204,6 @@ class TheNewTetrisRom(BaseRom):
         from PIL import Image
 
         with Image.open(filename) as im:
-            # TODO:
-            # If we need to convert to mode='L', then we ought to do something different than what is done below, so that we may properly deal with transparency.
-
-            # Otherwise, convert to intermediary mode='RGBA'.
-            # If our final destination mode is to be 'P', then this intermediary image will ensure that we get a palette with mode='RGBA' after converting to mode='P'.
-
             rgba_im = im.convert(mode='RGBA')
 
         _, info, asset_type, asset_format, asset_info, err = self.extract_asset(i_addr)
@@ -232,12 +225,12 @@ class TheNewTetrisRom(BaseRom):
             self.insert_asset(i_addr, raw, info)
 
         elif asset_format == AssetFormat.INTENSITY:
-            im = im.convert(mode='L')
+            im = im.convert(mode='LA')
 
             raw = bytearray()
             raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
             raw[4:8] = b'\x00\x02\x00\x00'
-            raw[8:] = im.tobytes()
+            raw[8:] = utils.ia88_to_ia44(im.tobytes())
             self.insert_asset(i_addr, raw, info)
 
         elif asset_format == AssetFormat.COLOR_INDEX:
