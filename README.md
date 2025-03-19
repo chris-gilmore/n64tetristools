@@ -118,15 +118,15 @@ handiciap:
 
 --
 
-    # mode='RGBA'
+    # RGBA, 16b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A56BA
     $ mv image.png nintendo_logo.png
 
-    # mode='L'
+    # IA, 8b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A87FA
     $ mv image.png font_a.png
 
-    # mode='P'
+    # CI, 8b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x521998
     $ mv image.png finale_boiler.png
 
@@ -138,7 +138,7 @@ handiciap:
     $ ./tnt-extract.py -v ~/tnt.z64 -n nintendo_logo
     $ mv image.png nintendo_logo.png
 
-    # mode='RGBA'
+    # RGBA, 16b
     $ ./sphere-extract.py -v ~/tetrisphere.z64 -i 0x74271C
     $ mv image.png title_screen.png
 
