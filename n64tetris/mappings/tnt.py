@@ -1153,6 +1153,7 @@ IMAGE_BY_NAME = {
     'tetris_start': 0x273C82,
     'main_background': 0x28A228,
     'nintendo_logo': 0x2A56BA,
+    'spotlight': 0x2A774C,
     'font_a': 0x2A87FA,
     'font_b': 0x2AAD06,
     'font_c': 0x2AC39C,
