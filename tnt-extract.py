@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
 """
-    # mode='RGBA'
+    # RGBA, 16b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A56BA
-    $ mv image.png nintendo_logo.png
+    # nintendo_logo.png
 
-    # mode='L'
+    # IA, 8b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A87FA
-    $ mv image.png font_a.png
+    # font_a.png
 
-    # mode='P'
+    # CI, 8b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x521998
-    $ mv image.png finale_boiler.png
+    # finale_boiler.png
 
     # anim, 4 frames
     $ ./tnt-extract.py -v ~/tnt.z64 --anim 0x527EDC
@@ -19,7 +19,17 @@
 
     # by name
     $ ./tnt-extract.py -v ~/tnt.z64 -n nintendo_logo
-    $ mv image.png nintendo_logo.png
+    # nintendo_logo.png
+
+    # extract all non-anim images
+    $ mkdir images && cd images
+    $ ../tnt-extract.py -v ~/tnt.z64 --all-images
+    $ cd ..
+
+    # extract all anim images
+    $ mkdir anims && cd anims
+    $ ../tnt-extract.py -v ~/tnt.z64 --all-anims
+    $ cd ..
 """
 
 import argparse
@@ -38,6 +48,8 @@ def main():
     group.add_argument('-i', metavar='ADDR', type=auto_int, help='address of image')
     group.add_argument('--anim', metavar='ADDR', type=auto_int, help='address of first image')
     group.add_argument('-n', metavar='NAME', help='name of image or anim')
+    group.add_argument('--all-images', action='store_true', help='all non-anim images')
+    group.add_argument('--all-anims', action='store_true', help='all anim images')
 
     args = parser.parse_args()
 
@@ -52,6 +64,12 @@ def main():
 
     if args.n:
         rom.extract_by_name(args.n)
+
+    if args.all_images:
+        rom.extract_all_images()
+
+    if args.all_anims:
+        rom.extract_all_anims()
 
 if __name__ == "__main__":
     main()

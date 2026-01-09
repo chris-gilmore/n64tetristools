@@ -158,7 +158,7 @@ class TheNewTetrisRom(BaseRom):
         if image_stack:
             im = image_stack.pop(0)
             if not image_stack:
-                im.save('image.png', format='png')
+                im.save(f"{tntmap.IMAGE_NAME[i_addr]}-0x{i_addr:06X}.png", format='png')
             else:
                 im.save('anim.webp', format='webp', save_all=True, lossless=True, exact=True, minimize_size=True, loop=0, duration=1000, append_images=image_stack)
 
@@ -186,6 +186,24 @@ class TheNewTetrisRom(BaseRom):
             print(f"No image or anim found by name: {name}", file=sys.stderr)
             sys.exit(1)
 
+    def extract_all_images(self):
+        for name, i_addr in tntmap.IMAGE_BY_NAME.items():
+            if i_addr > 0x520474:  # 'gamepak': 0x520474
+                continue
+
+            i_addrs = []
+            i_addrs.append(i_addr)
+            self.extract_image_or_anim(i_addrs)
+
+    def extract_all_anims(self):
+        for name, i_addr in tntmap.IMAGE_BY_NAME.items():
+            if i_addr < 0x520D46:  # 'mayan_temple_fire_01': 0x520D46
+                continue
+
+            i_addrs = []
+            i_addrs.append(i_addr)
+            self.extract_image_or_anim(i_addrs)
+
     def h2os_compress(self, raw):
         import lzo
 
@@ -200,11 +218,13 @@ class TheNewTetrisRom(BaseRom):
         else:  # info['prefix'] == b'H2ON'
             end = addr+8 + buflen
 
+        payload_size = end - (addr+8)
         #if end > info['end']:
         if end > tntmap.END[addr]:
-            payload_size = end - (addr+8)
             print(f"Payload size ({payload_size}) is too large", file=sys.stderr)
         else:
+            if self.verbose:
+                print(f"Payload size: {payload_size}", file=sys.stderr)
             self.data[addr+8 : end] = raw
 
         self.data[addr : addr + 4] = info['prefix']
@@ -220,6 +240,12 @@ class TheNewTetrisRom(BaseRom):
         if err is not None:
             print(err, file=sys.stderr)
             sys.exit(1)
+
+        if asset_type == AssetType.UNKNOWN:
+            if i_addr == 0x2A774C:  # spotlight
+                asset_info['width'], asset_info['height'] = 128, 128
+                asset_type = AssetType.IMAGE
+                asset_format = AssetFormat.I8
 
         if asset_type != AssetType.IMAGE:
             print(f"No image found at address: 0x{i_addr:06X}", file=sys.stderr)
@@ -241,6 +267,14 @@ class TheNewTetrisRom(BaseRom):
             raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
             raw[4:8] = b'\x00\x02\x00\x00'
             raw[8:] = utils.ia88_to_ia44(im.tobytes())
+
+            self.insert_asset(i_addr, raw, info)
+
+        elif asset_format == AssetFormat.I8:
+            im = im.convert(mode='L')
+
+            raw = bytearray()
+            raw[:] = im.tobytes()
 
             self.insert_asset(i_addr, raw, info)
 

@@ -120,15 +120,15 @@ handiciap:
 
     # RGBA, 16b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A56BA
-    $ mv image.png nintendo_logo.png
+    # nintendo_logo.png
 
     # IA, 8b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x2A87FA
-    $ mv image.png font_a.png
+    # font_a.png
 
     # CI, 8b
     $ ./tnt-extract.py -v ~/tnt.z64 -i 0x521998
-    $ mv image.png finale_boiler.png
+    # finale_boiler.png
 
     # anim, 4 frames
     $ ./tnt-extract.py -v ~/tnt.z64 --anim 0x527EDC
@@ -136,7 +136,17 @@ handiciap:
 
     # by name
     $ ./tnt-extract.py -v ~/tnt.z64 -n nintendo_logo
-    $ mv image.png nintendo_logo.png
+    # nintendo_logo.png
+
+    # extract all non-anim images
+    $ mkdir images && cd images
+    $ ../tnt-extract.py -v ~/tnt.z64 --all-images
+    $ cd ..
+
+    # extract all anim images
+    $ mkdir anims && cd anims
+    $ ../tnt-extract.py -v ~/tnt.z64 --all-anims
+    $ cd ..
 
     # RGBA, 16b
     $ ./sphere-extract.py -v ~/tetrisphere.z64 -i 0x74271C
