@@ -909,6 +909,8 @@ PALETTE = {
     0x44CD32: 0x46648C,
     0x466694: 0x47CEEC,
     0x47D0F4: 0x4937AE,
+    0x4946FE: 0x49AFAC,
+    0x4A1C4C: 0x4A3BBC,
     0x4A8E88: 0x4AA792,
     0x4AC8A0: 0x4B1186,
     0x4B138E: 0x4B71CC,
@@ -1151,6 +1153,7 @@ ANIM_NAME = {v: k for k, v in ANIM_BY_NAME.items()}
 
 IMAGE_BY_NAME = {
     'tetris_start': 0x273C82,
+    'glyphs': 0x289F8A,
     'main_background': 0x28A228,
     'nintendo_logo': 0x2A56BA,
     'spotlight': 0x2A774C,
@@ -1191,6 +1194,9 @@ IMAGE_BY_NAME = {
     'selection_box': 0x4939B6,
     'yellow_t_piece': 0x493B74,
     'yellow_t_piece_shadow': 0x494436,
+    'credits_background_center': 0x4946FE,
+    'credits_background_center_grayscale': 0x49B274,
+    'credits_spotlight': 0x4A1C4C,
     'menu_shadow': 0x4A3EC4,
     'single_shadow_a': 0x4A5DAE,
     'n64_controller': 0x4A8B4E,

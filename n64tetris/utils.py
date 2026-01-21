@@ -52,6 +52,11 @@ def ia88_to_ia44(raw):
         l.append(byte)
     return bytes(l)
 
+def rgba8888_to_rgb888(raw):
+    l = []
+    for i in range(0, len(raw), 4):
+        l.extend((raw[i], raw[i+1], raw[i+2]))
+    return bytes(l)
 
 # Recalculate N64 rom checksums
 # reference code:

@@ -22,12 +22,14 @@
     # nintendo_logo.png
 
     # extract all non-anim images
-    $ mkdir images && cd images
+    $ mkdir images
+    $ cd images
     $ ../tnt-extract.py -v ~/tnt.z64 --all-images
     $ cd ..
 
     # extract all anim images
-    $ mkdir anims && cd anims
+    $ mkdir anims
+    $ cd anims
     $ ../tnt-extract.py -v ~/tnt.z64 --all-anims
     $ cd ..
 """

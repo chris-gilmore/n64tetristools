@@ -36,7 +36,7 @@ class BaseRom:
         utils.sm64_update_checksums(self.data)
         open(filename, 'wb').write(self.data)
 
-    def guess_asset(self, raw):
+    def guess_asset(self, addr, raw):
         info = {}
         return AssetType.UNKNOWN, AssetFormat.UNKNOWN, info
 
@@ -50,7 +50,7 @@ class BaseRom:
         if not found:
             return None, None, None, None, None, f"No asset found at address: 0x{addr:06X}"
 
-        asset_type, asset_format, asset_info = self.guess_asset(raw)
+        asset_type, asset_format, asset_info = self.guess_asset(addr, raw)
         if self.verbose:
             print(f"{asset_type.name}\t{asset_format.name}\t{asset_info}", file=sys.stderr)
 

@@ -73,7 +73,7 @@ class TetrisphereRom(BaseRom):
         info = {'prefix': prefix, 'buflen': buflen, 'payload_size': payload_size, 'end': end}
         return raw, info, None
 
-    def guess_asset(self, raw):
+    def guess_asset(self, addr, raw):
         info = {}
         buflen = len(raw)
 

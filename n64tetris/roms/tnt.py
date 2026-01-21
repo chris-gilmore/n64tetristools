@@ -17,9 +17,10 @@ class AssetType(Enum):
 class AssetFormat(Enum):
     UNKNOWN = auto()
     RGBA5551 = auto()
-    INTENSITY = auto()
+    IA44 = auto()
     COLOR_INDEX = auto()
     I8 = auto()
+    RGB888 = auto()
 
 class TheNewTetrisRom(BaseRom):
     def __init__(self, verbose=False, force=False):
@@ -68,28 +69,52 @@ class TheNewTetrisRom(BaseRom):
         info = {'prefix': prefix, 'buflen': buflen, 'payload_size': payload_size, 'end': end}
         return raw, info, None
 
-    def guess_asset(self, raw):
+    def guess_asset(self, addr, raw):
         info = {}
-        buflen = len(raw)
 
-        width, height = struct.unpack('>2H', raw[:4])
+        if addr == 0x289F8A:  # glyphs
+            info['width'], info['height'], info['hdrlen'] = 208, 16, 0
+            return AssetType.IMAGE, AssetFormat.IA44, info
 
-        if buflen == 2 * width * height + 8:
-            if raw[4:8] == b'\x00\x00\x00\x00':
-                info['width'], info['height'] = width, height
-                return AssetType.IMAGE, AssetFormat.RGBA5551, info
+        elif addr == 0x2A774C:  # spotlight
+            info['width'], info['height'], info['hdrlen'] = 128, 128, 0
+            return AssetType.IMAGE, AssetFormat.I8, info
 
-        elif buflen == width * height + 8:
-            if raw[4:8] == b'\x00\x02\x00\x00':
-                info['width'], info['height'] = width, height
-                return AssetType.IMAGE, AssetFormat.INTENSITY, info
+        elif addr == 0x4946FE:  # credits_background_center
+            info['width'], info['height'], info['hdrlen'] = 200, 150, 0
+            return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
 
-            elif raw[4:8] == b'\x00\x03\x00\x00':
-                info['width'], info['height'] = width, height
-                return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
+        elif addr == 0x49B274:  # credits_background_center_grayscale
+            info['width'], info['height'], info['hdrlen'] = 200, 150, 0
+            return AssetType.IMAGE, AssetFormat.I8, info
 
-        elif buflen == 512:
-            return AssetType.PALETTE, AssetFormat.RGBA5551, info
+        elif addr == 0x4A1C4C:  # credits_spotlight
+            info['width'], info['height'], info['hdrlen'] = 128, 128, 0
+            return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
+
+        else:
+            buflen = len(raw)
+            width, height = struct.unpack('>2H', raw[:4])
+
+            if buflen == 2 * width * height + 8:
+                if raw[4:8] == b'\x00\x00\x00\x00':
+                    info['width'], info['height'], info['hdrlen'] = width, height, 8
+                    return AssetType.IMAGE, AssetFormat.RGBA5551, info
+
+            elif buflen == width * height + 8:
+                if raw[4:8] == b'\x00\x02\x00\x00':
+                    info['width'], info['height'], info['hdrlen'] = width, height, 8
+                    return AssetType.IMAGE, AssetFormat.IA44, info
+
+                elif raw[4:8] == b'\x00\x03\x00\x00':
+                    info['width'], info['height'], info['hdrlen'] = width, height, 8
+                    return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
+
+            elif buflen == 512:
+                return AssetType.PALETTE, AssetFormat.RGBA5551, info
+
+            elif buflen == 768:
+                return AssetType.PALETTE, AssetFormat.RGB888, info
 
         return AssetType.UNKNOWN, AssetFormat.UNKNOWN, info
 
@@ -103,27 +128,21 @@ class TheNewTetrisRom(BaseRom):
                 print(err, file=sys.stderr)
                 sys.exit(1)
 
-            if asset_type == AssetType.UNKNOWN:
-                if i_addr == 0x2A774C:  # spotlight
-                    asset_info['width'], asset_info['height'] = 128, 128
-                    asset_type = AssetType.IMAGE
-                    asset_format = AssetFormat.I8
-
             if asset_type != AssetType.IMAGE:
                 print(f"No image found at address: 0x{i_addr:06X}", file=sys.stderr)
                 sys.exit(1)
 
             if asset_format == AssetFormat.RGBA5551:
-                im = Image.frombytes('RGBA', (asset_info['width'], asset_info['height']), utils.rgba5551_to_rgba8888(raw[8:]))
+                im = Image.frombytes('RGBA', (asset_info['width'], asset_info['height']), utils.rgba5551_to_rgba8888(raw[asset_info['hdrlen'] : ]))
 
-            elif asset_format == AssetFormat.INTENSITY:
-                im = Image.frombytes('LA', (asset_info['width'], asset_info['height']), utils.ia44_to_ia88(raw[8:]))
+            elif asset_format == AssetFormat.IA44:
+                im = Image.frombytes('LA', (asset_info['width'], asset_info['height']), utils.ia44_to_ia88(raw[asset_info['hdrlen'] : ]))
 
             elif asset_format == AssetFormat.I8:
-                im = Image.frombytes('L', (asset_info['width'], asset_info['height']), raw[:])
+                im = Image.frombytes('L', (asset_info['width'], asset_info['height']), raw[asset_info['hdrlen'] : ])
 
             elif asset_format == AssetFormat.COLOR_INDEX:
-                im = Image.frombytes('P', (asset_info['width'], asset_info['height']), raw[8:])
+                im = Image.frombytes('P', (asset_info['width'], asset_info['height']), raw[asset_info['hdrlen'] : ])
 
                 p_addr = tntmap.PALETTE[i_addr]
 
@@ -138,6 +157,9 @@ class TheNewTetrisRom(BaseRom):
 
                 if asset_format == AssetFormat.RGBA5551:
                     im.putpalette(utils.rgba5551_to_rgba8888(raw), rawmode='RGBA')
+
+                elif asset_format == AssetFormat.RGB888:
+                    im.putpalette(raw, rawmode='RGB')
 
                 elif asset_format == AssetFormat.UNKNOWN:
                     print(f"Unknown palette format at address: 0x{p_addr:06X}", file=sys.stderr)
@@ -241,12 +263,6 @@ class TheNewTetrisRom(BaseRom):
             print(err, file=sys.stderr)
             sys.exit(1)
 
-        if asset_type == AssetType.UNKNOWN:
-            if i_addr == 0x2A774C:  # spotlight
-                asset_info['width'], asset_info['height'] = 128, 128
-                asset_type = AssetType.IMAGE
-                asset_format = AssetFormat.I8
-
         if asset_type != AssetType.IMAGE:
             print(f"No image found at address: 0x{i_addr:06X}", file=sys.stderr)
             sys.exit(1)
@@ -255,18 +271,25 @@ class TheNewTetrisRom(BaseRom):
 
         if asset_format == AssetFormat.RGBA5551:
             raw = bytearray()
-            raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
-            raw[4:8] = b'\x00\x00\x00\x00'
-            raw[8:] = utils.rgba8888_to_rgba5551(im.tobytes())
+
+            if asset_info['hdrlen'] == 8:
+                raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
+                raw[4:8] = b'\x00\x00\x00\x00'
+
+            raw[asset_info['hdrlen'] : ] = utils.rgba8888_to_rgba5551(im.tobytes())
+
             self.insert_asset(i_addr, raw, info)
 
-        elif asset_format == AssetFormat.INTENSITY:
+        elif asset_format == AssetFormat.IA44:
             im = im.convert(mode='LA')
 
             raw = bytearray()
-            raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
-            raw[4:8] = b'\x00\x02\x00\x00'
-            raw[8:] = utils.ia88_to_ia44(im.tobytes())
+
+            if asset_info['hdrlen'] == 8:
+                raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
+                raw[4:8] = b'\x00\x02\x00\x00'
+
+            raw[asset_info['hdrlen'] : ] = utils.ia88_to_ia44(im.tobytes())
 
             self.insert_asset(i_addr, raw, info)
 
@@ -274,7 +297,8 @@ class TheNewTetrisRom(BaseRom):
             im = im.convert(mode='L')
 
             raw = bytearray()
-            raw[:] = im.tobytes()
+
+            raw[asset_info['hdrlen'] : ] = im.tobytes()
 
             self.insert_asset(i_addr, raw, info)
 
@@ -282,9 +306,13 @@ class TheNewTetrisRom(BaseRom):
             im = im.convert(mode='P', palette=Image.Palette.ADAPTIVE)
 
             raw = bytearray()
-            raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
-            raw[4:8] = b'\x00\x03\x00\x00'
-            raw[8:] = im.tobytes()
+
+            if asset_info['hdrlen'] == 8:
+                raw[:4] = struct.pack('>2H', asset_info['width'], asset_info['height'])
+                raw[4:8] = b'\x00\x03\x00\x00'
+
+            raw[asset_info['hdrlen'] : ] = im.tobytes()
+
             self.insert_asset(i_addr, raw, info)
 
             p_addr = tntmap.PALETTE[i_addr]
@@ -299,8 +327,11 @@ class TheNewTetrisRom(BaseRom):
                 sys.exit(1)
 
             if asset_format == AssetFormat.RGBA5551:
-                raw = bytearray()
                 raw = utils.rgba8888_to_rgba5551(im.palette.tobytes())
+                self.insert_asset(p_addr, raw, info)
+
+            elif asset_format == AssetFormat.RGB888:
+                raw = utils.rgba8888_to_rgb888(im.palette.tobytes())
                 self.insert_asset(p_addr, raw, info)
 
             elif asset_format == AssetFormat.UNKNOWN:
