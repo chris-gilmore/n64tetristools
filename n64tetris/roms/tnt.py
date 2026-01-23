@@ -81,7 +81,7 @@ class TheNewTetrisRom(BaseRom):
             return AssetType.IMAGE, AssetFormat.I8, info
 
         elif addr == 0x4946FE:  # credits_background_center
-            info['width'], info['height'], info['hdrlen'] = 200, 150, 0
+            info['width'], info['height'], info['hdrlen'], info['split'] = 200, 150, 0, True
             return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
 
         elif addr == 0x49B274:  # credits_background_center_grayscale
@@ -89,7 +89,7 @@ class TheNewTetrisRom(BaseRom):
             return AssetType.IMAGE, AssetFormat.I8, info
 
         elif addr == 0x4A1C4C:  # credits_spotlight
-            info['width'], info['height'], info['hdrlen'] = 128, 128, 0
+            info['width'], info['height'], info['hdrlen'], info['split'] = 128, 128, 0, True
             return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
 
         else:
@@ -107,7 +107,7 @@ class TheNewTetrisRom(BaseRom):
                     return AssetType.IMAGE, AssetFormat.IA44, info
 
                 elif raw[4:8] == b'\x00\x03\x00\x00':
-                    info['width'], info['height'], info['hdrlen'] = width, height, 8
+                    info['width'], info['height'], info['hdrlen'], info['split'] = width, height, 8, False
                     return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
 
             elif buflen == 512:
@@ -122,7 +122,13 @@ class TheNewTetrisRom(BaseRom):
         from PIL import Image
 
         image_stack = []
+        indices_stack = []
+        pal_stack = []
         for i_addr in i_addrs:
+            im = None
+            indices = None
+            pal = None
+
             raw, _, asset_type, asset_format, asset_info, err = self.extract_asset(i_addr)
             if err is not None:
                 print(err, file=sys.stderr)
@@ -144,24 +150,33 @@ class TheNewTetrisRom(BaseRom):
             elif asset_format == AssetFormat.COLOR_INDEX:
                 im = Image.frombytes('P', (asset_info['width'], asset_info['height']), raw[asset_info['hdrlen'] : ])
 
+                if asset_info['split']:
+                    indices = Image.frombytes('L', (asset_info['width'], asset_info['height']), raw[asset_info['hdrlen'] : ])
+
                 p_addr = tntmap.PALETTE[i_addr]
 
-                raw, _, asset_type, asset_format, _, err = self.extract_asset(p_addr)
+                p_raw, _, p_asset_type, p_asset_format, _, err = self.extract_asset(p_addr)
                 if err is not None:
                     print(err, file=sys.stderr)
                     sys.exit(1)
 
-                if asset_type != AssetType.PALETTE:
+                if p_asset_type != AssetType.PALETTE:
                     print(f"No palette found at address: 0x{p_addr:06X}", file=sys.stderr)
                     sys.exit(1)
 
-                if asset_format == AssetFormat.RGBA5551:
-                    im.putpalette(utils.rgba5551_to_rgba8888(raw), rawmode='RGBA')
+                if p_asset_format == AssetFormat.RGBA5551:
+                    im.putpalette(utils.rgba5551_to_rgba8888(p_raw), rawmode='RGBA')
 
-                elif asset_format == AssetFormat.RGB888:
-                    im.putpalette(raw, rawmode='RGB')
+                    if asset_info['split']:
+                        pal = Image.frombytes('RGBA', (16, 16), utils.rgba5551_to_rgba8888(p_raw))
 
-                elif asset_format == AssetFormat.UNKNOWN:
+                elif p_asset_format == AssetFormat.RGB888:
+                    im.putpalette(utils.rgb888_to_rgba8888(p_raw), rawmode='RGBA')
+
+                    if asset_info['split']:
+                        pal = Image.frombytes('RGBA', (16, 16), utils.rgb888_to_rgba8888(p_raw))
+
+                elif p_asset_format == AssetFormat.UNKNOWN:
                     print(f"Unknown palette format at address: 0x{p_addr:06X}", file=sys.stderr)
                     sys.exit(1)
                 else:
@@ -176,11 +191,20 @@ class TheNewTetrisRom(BaseRom):
                 sys.exit(1)
 
             image_stack.append(im)
+            indices_stack.append(indices)
+            pal_stack.append(pal)
 
         if image_stack:
             im = image_stack.pop(0)
+            indices = indices_stack.pop(0)
+            pal = pal_stack.pop(0)
             if not image_stack:
-                im.save(f"{tntmap.IMAGE_NAME[i_addr]}-0x{i_addr:06X}.png", format='png')
+                if im is not None:
+                    im.save(f"{tntmap.IMAGE_NAME[i_addr]}-0x{i_addr:06X}.png", format='png')
+                if indices is not None:
+                    indices.save(f"{tntmap.IMAGE_NAME[i_addr]}_indices-0x{i_addr:06X}.png", format='png')
+                if pal is not None:
+                    pal.save(f"{tntmap.IMAGE_NAME[i_addr]}_pal-0x{p_addr:06X}.png", format='png')
             else:
                 im.save('anim.webp', format='webp', save_all=True, lossless=True, exact=True, minimize_size=True, loop=0, duration=1000, append_images=image_stack)
 
@@ -317,24 +341,24 @@ class TheNewTetrisRom(BaseRom):
 
             p_addr = tntmap.PALETTE[i_addr]
 
-            _, info, asset_type, asset_format, _, err = self.extract_asset(p_addr)
+            _, p_info, p_asset_type, p_asset_format, _, err = self.extract_asset(p_addr)
             if err is not None:
                 print(err, file=sys.stderr)
                 sys.exit(1)
 
-            if asset_type != AssetType.PALETTE:
+            if p_asset_type != AssetType.PALETTE:
                 print(f"No palette found at address: 0x{p_addr:06X}", file=sys.stderr)
                 sys.exit(1)
 
-            if asset_format == AssetFormat.RGBA5551:
-                raw = utils.rgba8888_to_rgba5551(im.palette.tobytes())
-                self.insert_asset(p_addr, raw, info)
+            if p_asset_format == AssetFormat.RGBA5551:
+                p_raw = utils.rgba8888_to_rgba5551(im.palette.tobytes())
+                self.insert_asset(p_addr, p_raw, p_info)
 
-            elif asset_format == AssetFormat.RGB888:
-                raw = utils.rgba8888_to_rgb888(im.palette.tobytes())
-                self.insert_asset(p_addr, raw, info)
+            elif p_asset_format == AssetFormat.RGB888:
+                p_raw = utils.rgba8888_to_rgb888(im.palette.tobytes())
+                self.insert_asset(p_addr, p_raw, p_info)
 
-            elif asset_format == AssetFormat.UNKNOWN:
+            elif p_asset_format == AssetFormat.UNKNOWN:
                 print(f"Unknown palette format at address: 0x{p_addr:06X}", file=sys.stderr)
                 sys.exit(1)
             else:

@@ -52,6 +52,12 @@ def ia88_to_ia44(raw):
         l.append(byte)
     return bytes(l)
 
+def rgb888_to_rgba8888(raw):
+    l = []
+    for i in range(0, len(raw), 3):
+        l.extend((raw[i], raw[i+1], raw[i+2], 0xFF))
+    return bytes(l)
+
 def rgba8888_to_rgb888(raw):
     l = []
     for i in range(0, len(raw), 4):
