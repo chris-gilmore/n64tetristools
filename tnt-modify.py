@@ -44,6 +44,7 @@ def main():
     parser.add_argument('-p', action='store_true', help='displays piece count (requires -X)')
     parser.add_argument('-r', action='store_true', help='displays remaining pieces (requires -X)')
     parser.add_argument('-l', action='store_true', help='displays extra lookahead (requires -X)')
+    parser.add_argument('-a', action='store_true', help='disables piece fall acceleration')
     parser.add_argument('SRC', help='source rom file')
     parser.add_argument('DEST', help='output rom file')
 
@@ -195,6 +196,9 @@ def main():
 
     if args.handicap is not None:
         rom.modify_handicap(args.handicap)
+
+    if args.a:
+        rom.modify_pieceFallAcceleration()
 
     rom.to_file(args.DEST)
 

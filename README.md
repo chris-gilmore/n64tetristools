@@ -1,13 +1,13 @@
 
 ```
-usage: tnt-modify.py [-h] [-v] [-f] [-X] [-s] [-p] [-r] [-l] [--image FILE]
-                     [-i ADDR | -n NAME] [--seed VALUE] [--bag # # #]
-                     [--sprint TIME] [--ultra LINES] [--piece TYPE]
-                     [--dc # # #] [--sc # # #] [--spawn JIFFIES]
-                     [--hold JIFFIES] [--lock JIFFIES] [--square JIFFIES]
-                     [--line JIFFIES] [--screens # #] [--stat TYPE] [--xy # #]
-                     [--rgba # # # #] [--ihp TYPE] [--sqsz {2,4,6,8}]
-                     [--handicap [0-19]]
+usage: tnt-modify.py [-h] [-v] [-f] [-X] [-s] [-p] [-r] [-l] [-a]
+                     [--image FILE] [-i ADDR | -n NAME] [--seed VALUE]
+                     [--bag # # #] [--sprint TIME] [--ultra LINES]
+                     [--piece TYPE] [--dc # # #] [--sc # # #]
+                     [--spawn JIFFIES] [--hold JIFFIES] [--lock JIFFIES]
+                     [--square JIFFIES] [--line JIFFIES] [--screens # #]
+                     [--stat TYPE] [--xy # #] [--rgba # # # #] [--ihp TYPE]
+                     [--sqsz {2,4,6,8}] [--handicap [0-19]]
                      SRC DEST
 
 positional arguments:
@@ -23,6 +23,7 @@ options:
   -p                 displays piece count (requires -X)
   -r                 displays remaining pieces (requires -X)
   -l                 displays extra lookahead (requires -X)
+  -a                 disables piece fall acceleration
 
 image:
   Insert image either by address or by name.

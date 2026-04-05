@@ -1549,3 +1549,8 @@ class TheNewTetrisRom(BaseRom):
         addr1 = 0x096180
         value &= 0xFF
         self.data[addr1 : addr1 + 1] = bytes([value])
+
+    # Sets piece fall acceleration to 0.0, so that there is no speedup
+    def modify_pieceFallAcceleration(self):
+        addr1 = 0x0961E0
+        self.data[addr1 : addr1 + 4] = b'\x00\x00\x00\x00'
