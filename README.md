@@ -1,6 +1,6 @@
 
 ```
-usage: tnt-modify.py [-h] [-v] [-f] [-X] [-s] [-p] [-r] [-l] [-a]
+usage: tnt-modify.py [-h] [-v] [-f] [-X] [-s] [-p] [-r] [-l] [-a] [--fps]
                      [--image FILE] [-i ADDR | -n NAME] [--seed VALUE]
                      [--bag # # #] [--sprint TIME] [--ultra LINES]
                      [--piece TYPE] [--dc # # #] [--sc # # #]
@@ -24,6 +24,7 @@ options:
   -r                 displays remaining pieces (requires -X)
   -l                 displays extra lookahead (requires -X)
   -a                 disables piece fall acceleration
+  --fps              displays fps measurement
 
 image:
   Insert image either by address or by name.

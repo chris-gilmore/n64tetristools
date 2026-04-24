@@ -45,6 +45,7 @@ def main():
     parser.add_argument('-r', action='store_true', help='displays remaining pieces (requires -X)')
     parser.add_argument('-l', action='store_true', help='displays extra lookahead (requires -X)')
     parser.add_argument('-a', action='store_true', help='disables piece fall acceleration')
+    parser.add_argument('--fps', action='store_true', help='displays fps measurement')
     parser.add_argument('SRC', help='source rom file')
     parser.add_argument('DEST', help='output rom file')
 
@@ -199,6 +200,9 @@ def main():
 
     if args.a:
         rom.modify_pieceFallAcceleration()
+
+    if args.fps:
+        rom.modify_fps()
 
     rom.to_file(args.DEST)
 

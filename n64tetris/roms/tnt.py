@@ -1545,6 +1545,10 @@ class TheNewTetrisRom(BaseRom):
         self.data[addr1 + position: addr1 + position + 1] = bytes([value])
     """
 
+    def modify_fps(self):
+        addr1 = 0x096160
+        self.data[addr1 : addr1 + 1] = b'\x01'
+
     def modify_handicap(self, value):
         addr1 = 0x096180
         value &= 0xFF
