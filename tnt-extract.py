@@ -52,6 +52,8 @@ def main():
     group.add_argument('-n', metavar='NAME', help='name of image or anim')
     group.add_argument('--all-images', action='store_true', help='all non-anim images')
     group.add_argument('--all-anims', action='store_true', help='all anim images')
+    group.add_argument('-s', metavar='ADDR', type=auto_int, help='address of sound')
+    group.add_argument('--all-sounds', action='store_true', help='all sounds')
 
     args = parser.parse_args()
 
@@ -72,6 +74,12 @@ def main():
 
     if args.all_anims:
         rom.extract_all_anims()
+
+    if args.s:
+        rom.extract_sound(args.s)
+
+    if args.all_sounds:
+        rom.extract_all_sounds()
 
 if __name__ == "__main__":
     main()

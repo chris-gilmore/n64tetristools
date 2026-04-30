@@ -1,6 +1,9 @@
 import sys
 import struct
 from enum import Enum, auto
+import wave
+import numpy as np
+from itertools import batched
 
 #from PIL import Image
 #import lzo
@@ -13,6 +16,7 @@ class AssetType(Enum):
     UNKNOWN = auto()
     IMAGE = auto()
     PALETTE = auto()
+    SOUND = auto()
 
 class AssetFormat(Enum):
     UNKNOWN = auto()
@@ -21,6 +25,7 @@ class AssetFormat(Enum):
     COLOR_INDEX = auto()
     I8 = auto()
     RGB888 = auto()
+    PCM = auto()
 
 class TheNewTetrisRom(BaseRom):
     def __init__(self, verbose=False, force=False):
@@ -71,6 +76,11 @@ class TheNewTetrisRom(BaseRom):
 
     def guess_asset(self, addr, raw):
         info = {}
+
+        if (addr >= 0x7C1E56 and addr <= 0xB8F674):
+            info['samplerate'] = tntmap.SOUND[addr][0]
+            info['nchannels'] = tntmap.SOUND[addr][1]
+            return AssetType.SOUND, AssetFormat.PCM, info
 
         if addr == 0x289F8A:  # glyphs
             info['width'], info['height'], info['hdrlen'] = 208, 16, 0
@@ -249,6 +259,33 @@ class TheNewTetrisRom(BaseRom):
             i_addrs = []
             i_addrs.append(i_addr)
             self.extract_image_or_anim(i_addrs)
+
+    def extract_sound(self, s_addr):
+        raw, _, asset_type, asset_format, asset_info, err = self.extract_asset(s_addr)
+        if err is not None:
+            print(err, file=sys.stderr)
+            sys.exit(1)
+
+        if asset_type != AssetType.SOUND:
+            print(f"No sound found at address: 0x{s_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+
+        if asset_format == AssetFormat.PCM:
+            arr_u8 = np.frombuffer(raw, dtype=np.uint8) + 128
+            with wave.open(f"{s_addr:06X}.wav", 'wb') as wavfile:
+                wavfile.setparams((asset_info['nchannels'], 1, asset_info['samplerate'], 0, 'NONE', 'not compressed'))
+                wavfile.writeframes(arr_u8)
+
+        elif asset_format == AssetFormat.UNKNOWN:
+            print(f"Unknown sound format at address: 0x{s_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print(f"Unimplemented sound format at address: 0x{s_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+
+    def extract_all_sounds(self):
+        for s_addr, params in tntmap.SOUND.items():
+            self.extract_sound(s_addr)
 
     def h2os_compress(self, raw):
         import lzo
