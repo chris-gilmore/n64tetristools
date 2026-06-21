@@ -96,6 +96,11 @@ def main():
     group_handicap = parser.add_argument_group('handiciap', 'Raise the bottom of the playfield for marathon and sprint.')
     group_handicap.add_argument('--handicap', metavar='[0-19]', choices=range(0, 20), type=int, help='rows (default: 0)')
 
+    group_sample = parser.add_argument_group('sample', description='Insert sample by address.')
+    group_sample.add_argument('-d', metavar='ADDR', type=auto_int, help='address of sample')
+    group_sample.add_argument('--sample', metavar='FILE', help='load sample file')
+    group_sample.add_argument('-w', '--wave', action='store_true', help='as wav file')
+
     args = parser.parse_args()
 
     rom = TheNewTetrisRom(verbose=args.verbose, force=args.force)
@@ -203,6 +208,10 @@ def main():
 
     if args.fps:
         rom.modify_fps()
+
+    if args.sample is not None:
+        if args.d is not None:
+            rom.insert_sample(args.sample, args.d, args.wave)
 
     rom.to_file(args.DEST)
 

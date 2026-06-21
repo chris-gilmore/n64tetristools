@@ -7,7 +7,8 @@ usage: tnt-modify.py [-h] [-v] [-f] [-X] [-s] [-p] [-r] [-l] [-a] [--fps]
                      [--spawn JIFFIES] [--hold JIFFIES] [--lock JIFFIES]
                      [--square JIFFIES] [--line JIFFIES] [--screens # #]
                      [--stat TYPE] [--xy # #] [--rgba # # # #] [--ihp TYPE]
-                     [--sqsz {2,4,6,8}] [--handicap [0-19]]
+                     [--sqsz {2,4,6,8}] [--handicap [0-19]] [-d ADDR]
+                     [--sample FILE] [-w]
                      SRC DEST
 
 positional arguments:
@@ -102,6 +103,13 @@ handiciap:
   Raise the bottom of the playfield for marathon and sprint.
 
   --handicap [0-19]  rows (default: 0)
+
+sample:
+  Insert sample by address.
+
+  -d ADDR            address of sample
+  --sample FILE      load sample file
+  -w, --wave         as wav file
 ```
 
 ```

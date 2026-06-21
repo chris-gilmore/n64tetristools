@@ -16,7 +16,8 @@ class AssetType(Enum):
     UNKNOWN = auto()
     IMAGE = auto()
     PALETTE = auto()
-    SOUND = auto()
+    SAMPLE = auto()
+    DCM = auto()
 
 class AssetFormat(Enum):
     UNKNOWN = auto()
@@ -25,7 +26,9 @@ class AssetFormat(Enum):
     COLOR_INDEX = auto()
     I8 = auto()
     RGB888 = auto()
-    PCM = auto()
+    PCM_S8 = auto()
+    PCM_S16 = auto()
+    DCM1 = auto()
 
 class TheNewTetrisRom(BaseRom):
     def __init__(self, verbose=False, force=False):
@@ -78,9 +81,12 @@ class TheNewTetrisRom(BaseRom):
         info = {}
 
         if (addr >= 0x7C1E56 and addr <= 0xB8F674):
-            info['samplerate'] = tntmap.SOUND[addr][0]
-            info['nchannels'] = tntmap.SOUND[addr][1]
-            return AssetType.SOUND, AssetFormat.PCM, info
+            info['format'] = tntmap.SAMPLE[addr][0]
+            info['sample_rate'] = tntmap.SAMPLE[addr][1]
+            if info['format'] == 0:
+                return AssetType.SAMPLE, AssetFormat.PCM_S8, info
+            else:
+                return AssetType.SAMPLE, AssetFormat.PCM_S16, info
 
         if addr == 0x289F8A:  # glyphs
             info['width'], info['height'], info['hdrlen'] = 208, 16, 0
@@ -101,6 +107,9 @@ class TheNewTetrisRom(BaseRom):
         elif addr == 0x4A1C4C:  # credits_spotlight
             info['width'], info['height'], info['hdrlen'], info['split'] = 128, 128, 0, True
             return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
+
+        elif struct.unpack('4s', raw[:4])[0] == b'DCM1':
+            return AssetType.DCM, AssetFormat.DCM1, info
 
         else:
             buflen = len(raw)
@@ -260,32 +269,73 @@ class TheNewTetrisRom(BaseRom):
             i_addrs.append(i_addr)
             self.extract_image_or_anim(i_addrs)
 
-    def extract_sound(self, s_addr):
+    def extract_sample(self, s_addr, as_wave):
         raw, _, asset_type, asset_format, asset_info, err = self.extract_asset(s_addr)
         if err is not None:
             print(err, file=sys.stderr)
             sys.exit(1)
 
-        if asset_type != AssetType.SOUND:
-            print(f"No sound found at address: 0x{s_addr:06X}", file=sys.stderr)
+        if asset_type != AssetType.SAMPLE:
+            print(f"No sample found at address: 0x{s_addr:06X}", file=sys.stderr)
             sys.exit(1)
 
-        if asset_format == AssetFormat.PCM:
-            arr_u8 = np.frombuffer(raw, dtype=np.uint8) + 128
-            with wave.open(f"{s_addr:06X}.wav", 'wb') as wavfile:
-                wavfile.setparams((asset_info['nchannels'], 1, asset_info['samplerate'], 0, 'NONE', 'not compressed'))
-                wavfile.writeframes(arr_u8)
+        if asset_format == AssetFormat.PCM_S16:
+            if as_wave:
+                with wave.open(f"{s_addr:06X}.wav", 'wb') as wavfile:
+                    wavfile.setparams((1, 2, asset_info['sample_rate'], 0, 'NONE', 'not compressed'))
+                    wavfile.writeframes(raw)
+            else:
+                open(f"{s_addr:06X}.bin", 'wb').write(raw)
+
+        elif asset_format == AssetFormat.PCM_S8:
+            if as_wave:
+                arr_u8 = np.frombuffer(raw, dtype=np.uint8) + 128
+                with wave.open(f"{s_addr:06X}.wav", 'wb') as wavfile:
+                    wavfile.setparams((1, 1, asset_info['sample_rate'], 0, 'NONE', 'not compressed'))
+                    wavfile.writeframes(arr_u8)
+            else:
+                open(f"{s_addr:06X}.bin", 'wb').write(raw)
 
         elif asset_format == AssetFormat.UNKNOWN:
-            print(f"Unknown sound format at address: 0x{s_addr:06X}", file=sys.stderr)
+            print(f"Unknown sample format at address: 0x{s_addr:06X}", file=sys.stderr)
             sys.exit(1)
         else:
-            print(f"Unimplemented sound format at address: 0x{s_addr:06X}", file=sys.stderr)
+            print(f"Unimplemented sample format at address: 0x{s_addr:06X}", file=sys.stderr)
             sys.exit(1)
 
-    def extract_all_sounds(self):
-        for s_addr, params in tntmap.SOUND.items():
-            self.extract_sound(s_addr)
+    def extract_all_samples(self, as_wave):
+        for s_addr, params in tntmap.SAMPLE.items():
+            self.extract_sample(s_addr, as_wave)
+
+    def extract_dcm(self, dcm_addr):
+        raw, _, asset_type, asset_format, asset_info, err = self.extract_asset(dcm_addr)
+        if err is not None:
+            print(err, file=sys.stderr)
+            sys.exit(1)
+
+        if asset_type != AssetType.DCM:
+            print(f"No dcm found at address: 0x{dcm_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+
+        if asset_format == AssetFormat.DCM1:
+            open(f"{dcm_addr:06X}.bin", 'wb').write(raw)
+            if self.verbose:
+                print("dcm_name, dcm_addr, num_channels, num_samples, smp_id, flags, smplen, loopBegin, loopEnd")
+                num_channels, num_samples = struct.unpack('2B', raw[4:6])
+                for i in range(num_samples):
+                    smplen, loopBegin, loopEnd, flags, smp_id = struct.unpack('<3I2H', raw[14 + i * 16 : 30 + i * 16])
+                    print(f"{tntmap.DCM_NAME[dcm_addr]}, 0x{dcm_addr:06X}, {num_channels}, {num_samples}, {smp_id}, {flags:04b}, {smplen}, {loopBegin}, {loopEnd}")
+
+        elif asset_format == AssetFormat.UNKNOWN:
+            print(f"Unknown dcm format at address: 0x{dcm_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print(f"Unimplemented dcm format at address: 0x{dcm_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+
+    def extract_all_dcms(self):
+        for dcm_name, dcm_addr in tntmap.DCM_BY_NAME.items():
+            self.extract_dcm(dcm_addr)
 
     def h2os_compress(self, raw):
         import lzo
@@ -417,6 +467,40 @@ class TheNewTetrisRom(BaseRom):
             self.insert_image(filename, tntmap.IMAGE_BY_NAME[name])
         else:
             print(f"No image found by name: {name}", file=sys.stderr)
+            sys.exit(1)
+
+    def insert_sample(self, filename, s_addr, as_wave):
+        if as_wave:
+            with wave.open(filename, 'rb') as wavfile:
+                pcmdata = wavfile.readframes(wavfile.getnframes())
+        else:
+            pcmdata = open(filename, 'rb').read()
+
+        _, info, asset_type, asset_format, asset_info, err = self.extract_asset(s_addr)
+        if err is not None:
+            print(err, file=sys.stderr)
+            sys.exit(1)
+
+        if asset_type != AssetType.SAMPLE:
+            print(f"No sample found at address: 0x{s_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+
+        if asset_format == AssetFormat.PCM_S16:
+            raw = bytearray(pcmdata)
+            self.insert_asset(s_addr, raw, info)
+
+        elif asset_format == AssetFormat.PCM_S8:
+            if as_wave:
+                raw = bytearray(bytes(np.frombuffer(pcmdata, dtype=np.uint8) - 128))
+            else:
+                raw = bytearray(pcmdata)
+            self.insert_asset(s_addr, raw, info)
+
+        elif asset_format == AssetFormat.UNKNOWN:
+            print(f"Unknown sample format at address: 0x{s_addr:06X}", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print(f"Unimplemented sample format at address: 0x{s_addr:06X}", file=sys.stderr)
             sys.exit(1)
 
     def modify_seed(self, value):

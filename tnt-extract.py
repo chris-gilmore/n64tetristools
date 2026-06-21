@@ -52,8 +52,11 @@ def main():
     group.add_argument('-n', metavar='NAME', help='name of image or anim')
     group.add_argument('--all-images', action='store_true', help='all non-anim images')
     group.add_argument('--all-anims', action='store_true', help='all anim images')
-    group.add_argument('-s', metavar='ADDR', type=auto_int, help='address of sound')
-    group.add_argument('--all-sounds', action='store_true', help='all sounds')
+    group.add_argument('-s', metavar='ADDR', type=auto_int, help='address of sample')
+    group.add_argument('--all-samples', action='store_true', help='all samples')
+    parser.add_argument('-w', '--wave', action='store_true', help='as wav file(s)')
+    group.add_argument('--dcm', metavar='ADDR', type=auto_int, help='address of dcm')
+    group.add_argument('--all-dcms', action='store_true', help='all dcms')
 
     args = parser.parse_args()
 
@@ -76,10 +79,16 @@ def main():
         rom.extract_all_anims()
 
     if args.s:
-        rom.extract_sound(args.s)
+        rom.extract_sample(args.s, args.wave)
 
-    if args.all_sounds:
-        rom.extract_all_sounds()
+    if args.all_samples:
+        rom.extract_all_samples(args.wave)
+
+    if args.dcm:
+        rom.extract_dcm(args.dcm)
+
+    if args.all_dcms:
+        rom.extract_all_dcms()
 
 if __name__ == "__main__":
     main()
