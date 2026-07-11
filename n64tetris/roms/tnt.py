@@ -3,7 +3,6 @@ import struct
 from enum import Enum, auto
 import wave
 import numpy as np
-from itertools import batched
 
 #from PIL import Image
 #import lzo
@@ -80,7 +79,7 @@ class TheNewTetrisRom(BaseRom):
     def guess_asset(self, addr, raw):
         info = {}
 
-        if (addr >= 0x7C1E56 and addr <= 0xB8F674):
+        if addr in tntmap.SAMPLE:
             info['format'] = tntmap.SAMPLE[addr][0]
             info['sample_rate'] = tntmap.SAMPLE[addr][1]
             if info['format'] == 0:
@@ -88,7 +87,7 @@ class TheNewTetrisRom(BaseRom):
             else:
                 return AssetType.SAMPLE, AssetFormat.PCM_S16, info
 
-        if addr == 0x289F8A:  # glyphs
+        elif addr == 0x289F8A:  # glyphs
             info['width'], info['height'], info['hdrlen'] = 208, 16, 0
             return AssetType.IMAGE, AssetFormat.IA44, info
 
@@ -108,7 +107,7 @@ class TheNewTetrisRom(BaseRom):
             info['width'], info['height'], info['hdrlen'], info['split'] = 128, 128, 0, True
             return AssetType.IMAGE, AssetFormat.COLOR_INDEX, info
 
-        elif struct.unpack('4s', raw[:4])[0] == b'DCM1':
+        elif raw[:4] == b'DCM1':
             return AssetType.DCM, AssetFormat.DCM1, info
 
         else:
